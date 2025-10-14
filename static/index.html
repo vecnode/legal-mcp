@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>legal atlas</title>
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+  <header>
+    <h1>legal-atlas</h1>
+    AI-assisted platform to understand and create legal documents
+  </header>
+
+  <main>
+    <section class="card">
+      File Upload
+
+      <form id="form">  
+        <div class="drop-area" id="drop">
+          <input id="fileInput" type="file" accept="application/pdf,image/*" />
+          <div id="fileLabel">Drop or Click to upload PDFs or Images</div>
+          <div id="fileMeta"></div>
+          <div id="fileType" class="file-type"></div>
+        </div>
+
+         <div>
+           <label>Max pages (0 = all)</label>
+           <input id="max_pages" type="number" min="0" value="0" style="width:100%; padding:8px; border-radius:10px; border:1px solid #2a384a; background:#0e141c; color:var(--text)"/>
+         </div>
+
+        <div class="row">
+          <button class="btn" id="runBtn" type="submit">Extract text</button>
+          <button class="btn" id="clearBtn" type="button">Clear Files</button>
+        </div>
+        <div class="space"></div>
+        <div class="muted" id="status"></div>
+      </form>
+
+    </section>
+
+    <section class="card">
+      Document Visualiser
+      <div id="pdfPreview" class="pdf-preview">
+        <p class="muted">File Preview</p>
+      </div>
+    </section>
+
+
+    <section class="card results-card">
+      Extraction Results
+      <button class="btn" id="downloadBtn" type="button" disabled>Download .txt</button>
+
+      <div id="output" class="results"></div>
+
+    </section>
+  
+    <section class="card glossary-card">
+      Glossary
+      <div class="glossary-content">
+        <p>In development by a world-leading legal and engineering team. This product currently allows to: 1) Extract text from PDF, 3) Visualise PDFs, 2) Download the text extracted from the PDF. </p>
+      </div>
+    </section>
+
+    
+
+  </main>
+
+  
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
+
