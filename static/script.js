@@ -4,13 +4,21 @@ const fileLabel = document.getElementById('fileLabel');
 const fileMeta = document.getElementById('fileMeta');
 const runBtn = document.getElementById('runBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const copyBtn = document.getElementById('copyBtn');
 const statusEl = document.getElementById('status');
 const output = document.getElementById('output');
-const maxPages = document.getElementById('max_pages');
 const pdfPreview = document.getElementById('pdfPreview');
 const clearBtn = document.getElementById('clearBtn');
+const extractImageBtn = document.getElementById('extractImageBtn');
+const selectedFile = document.getElementById('selectedFile');
+const fileSize = document.getElementById('fileSize');
 
 const drop = document.getElementById('drop');
+
+// Initialize buttons as disabled
+extractImageBtn.disabled = true;
+runBtn.disabled = true;
+copyBtn.disabled = true;
 
 // Prevent default drag and drop behavior on the entire page
 // but allow the drop area to handle its own events
@@ -86,6 +94,33 @@ drop.addEventListener('drop', (e) => {
 
 fileInput.addEventListener('change', onFileChange);
 
+// Copy button functionality
+copyBtn.addEventListener('click', async () => {
+  const text = output.value;
+  if (!text.trim()) {
+    alert('No text to copy');
+    return;
+  }
+  
+  try {
+    await navigator.clipboard.writeText(text);
+    // Temporarily change button text to show success
+    const originalText = copyBtn.textContent;
+    copyBtn.textContent = 'Copied';
+    copyBtn.style.background = '#28a745';
+    
+    setTimeout(() => {
+      copyBtn.textContent = originalText;
+      copyBtn.style.background = '';
+    }, 1500);
+  } catch (err) {
+    // Fallback for older browsers
+    output.select();
+    document.execCommand('copy');
+    alert('Text copied to clipboard');
+  }
+});
+
 // Clear button functionality
 clearBtn.addEventListener('click', () => {
   fileInput.value = '';
@@ -93,17 +128,111 @@ clearBtn.addEventListener('click', () => {
   fileMeta.textContent = '';
   document.getElementById('fileType').textContent = '';
   pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
-  output.innerHTML = '';
+  output.value = '';
   statusEl.textContent = '';
   downloadBtn.disabled = true;
+  selectedFile.textContent = '';
+  fileSize.textContent = '';
+  // Disable both buttons when cleared
+  extractImageBtn.disabled = true;
+  runBtn.disabled = true;
+  copyBtn.disabled = true;
+});
+
+// Image extraction handler
+extractImageBtn.addEventListener('click', async () => {
+  const f = fileInput.files?.[0];
+  if (!f) { 
+    alert('Choose an image file first.'); 
+    return; 
+  }
+
+  // Check if it's an image file
+  if (!f.type.startsWith('image/')) {
+    alert('Please select an image file (PNG, JPG, JPEG).');
+    return;
+  }
+
+  extractImageBtn.disabled = true;
+  runBtn.disabled = true;
+  downloadBtn.disabled = true;
+  output.value = '';
+  
+  // Show progress bar
+  statusEl.innerHTML = `
+    <div style="background: #1a1f2a; border-radius: 8px; padding: 8px; margin: 8px 0;">
+      <div style="color: #6aa7ff; font-size: 14px; margin-bottom: 4px;">Processing image with OCR</div>
+      <div style="background: #0b0f14; height: 8px; border-radius: 4px; overflow: hidden;">
+        <div id="progressBar" style="background: #6aa7ff; height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+      </div>
+      <div id="progressText" style="color: #9fb3c8; font-size: 12px; margin-top: 4px;">Starting...</div>
+    </div>
+  `;
+
+  // Simulate progress updates
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  
+  const updateProgress = (percent) => {
+    progressBar.style.width = percent + '%';
+  };
+
+  // Start progress simulation
+  updateProgress(10);
+  await new Promise(resolve => setTimeout(resolve, 200));
+  
+  updateProgress(25);
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  updateProgress(40);
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  const body = new FormData();
+  body.append('file', f);
+
+  try {
+    updateProgress(60);
+    
+    const res = await fetch('/api/extract-image', { method: 'POST', body });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    updateProgress(90);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const data = await res.json();
+    output.value = data.extracted_text;
+    
+    updateProgress(100);
+    setTimeout(() => {
+      statusEl.textContent = `OCR completed: ${data.filename}`;
+    }, 500);
+    
+    downloadBtn.disabled = false;
+    copyBtn.disabled = false;
+
+  } catch (err) {
+    output.value = `Error: ${err.message}`;
+    statusEl.textContent = 'OCR failed';
+  } finally {
+    extractImageBtn.disabled = false;
+    runBtn.disabled = false;
+  }
 });
 function onFileChange() {
   const f = fileInput.files?.[0];
   if (!f) { 
-    fileLabel.textContent = 'Drop your file or click to choose'; 
+    fileLabel.textContent = 'Drop or Click to upload PDFs or Images'; 
     fileMeta.textContent = ''; 
     pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
     document.getElementById('fileType').textContent = '';
+    selectedFile.textContent = '';
+    fileSize.textContent = '';
+    // Disable both buttons when no file
+    extractImageBtn.disabled = true;
+    runBtn.disabled = true;
     return; 
   }
   
@@ -116,17 +245,23 @@ function onFileChange() {
   
   // Determine file type
   let fileType = 'UNKNOWN';
+  let isImage = false;
   if (fileExtension === 'pdf') {
     fileType = 'PDF';
   } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension)) {
     fileType = fileExtension.toUpperCase();
+    isImage = true;
   }
   
   // Update UI
-  fileLabel.textContent = `Selected: ${fileName}`;
+  fileLabel.textContent = 'Selected File';
   const mb = (f.size / (1024*1024)).toFixed(2);
-  fileMeta.textContent = `${mb} MB`;
-  document.getElementById('fileType').textContent = `File Type: ${fileType}`;
+  selectedFile.textContent = fileName;
+  fileSize.textContent = `${fileType} (${mb} MB)`;
+  
+  // Enable/disable buttons based on file type
+  extractImageBtn.disabled = !isImage;  // Only enable for images
+  runBtn.disabled = false;  // Always enable for PDFs and images
   
   // Create preview based on file type
   const fileURL = URL.createObjectURL(f);
@@ -157,7 +292,6 @@ form.addEventListener('submit', async (e) => {
 
   const body = new FormData();
   body.append('file', f);
-  body.append('max_pages', maxPages.value || '0');
 
   try {
     const res = await fetch('/api/extract-text', { method: 'POST', body });
@@ -168,23 +302,14 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
     statusEl.textContent = `Processed ${data.num_pages} page(s).`;
 
-    output.innerHTML = '';
-    data.pages.forEach(p => {
-      const div = document.createElement('div');
-      div.className = 'page';
-      const hdr = document.createElement('div');
-      hdr.innerHTML = `<strong>Page ${p.page}</strong> <span class="pill">${p.source}</span>`;
-      const pre = document.createElement('div');
-      pre.textContent = p.text || '';
-      div.appendChild(hdr);
-      div.appendChild(document.createElement('div')).className = 'space';
-      div.appendChild(pre);
-      output.appendChild(div);
-    });
-
+    // Set the extracted text in the textarea
+    output.value = data.full_text || '';
+    
+    // Enable download functionality
     const blob = new Blob([data.full_text || ''], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     downloadBtn.disabled = false;
+    copyBtn.disabled = false;
     downloadBtn.onclick = () => {
       const a = document.createElement('a');
       a.href = url; a.download = (f.name.replace(/\.pdf$/i, '') || 'output') + '.txt';
@@ -194,8 +319,28 @@ form.addEventListener('submit', async (e) => {
   } catch (err) {
     console.error(err);
     statusEl.textContent = '';
-    output.innerHTML = `<div class="page">${err.message}</div>`;
+    output.value = `Error: ${err.message}`;
   } finally {
     runBtn.disabled = false;
   }
+});
+
+// Tab functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const targetTab = this.getAttribute('data-tab');
+      
+      // Remove active class from all buttons and contents
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      
+      // Add active class to clicked button and corresponding content
+      this.classList.add('active');
+      document.getElementById(targetTab).classList.add('active');
+    });
+  });
 });

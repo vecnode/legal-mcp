@@ -15,57 +15,95 @@
   </header>
 
   <main>
-    <section class="card">
-      File Upload
+    <div class="main-container">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="text-extractor">Text Extractor</button>
+        <button class="tab-btn" data-tab="legal-generator">Legal Document Generator</button>
+        <button class="tab-btn" data-tab="law-search">Portuguese Law Search</button>
 
-      <form id="form">  
-        <div class="drop-area" id="drop">
-          <input id="fileInput" type="file" accept="application/pdf,image/*" />
-          <div id="fileLabel">Drop or Click to upload PDFs or Images</div>
-          <div id="fileMeta"></div>
-          <div id="fileType" class="file-type"></div>
-        </div>
-
-         <div>
-           <label>Max pages (0 = all)</label>
-           <input id="max_pages" type="number" min="0" value="0" style="width:100%; padding:8px; border-radius:10px; border:1px solid #2a384a; background:#0e141c; color:var(--text)"/>
-         </div>
-
-        <div class="row">
-          <button class="btn" id="runBtn" type="submit">Extract text</button>
-          <button class="btn" id="clearBtn" type="button">Clear Files</button>
-        </div>
-        <div class="space"></div>
-        <div class="muted" id="status"></div>
-      </form>
-
-    </section>
-
-    <section class="card">
-      Document Visualiser
-      <div id="pdfPreview" class="pdf-preview">
-        <p class="muted">File Preview</p>
       </div>
-    </section>
+      
+      <div class="tab-content active" id="text-extractor">
+        
+        <section class="card glossary-card">
+          About
+          <br><br>
+          <label>This page allows to extract text from PDFs and Images.<br> 
+            This section currently allows to: 1) Extract text from PDF/Image, 2) Visualise PDFs/Image, 3) Download and copy the text extracted.</label>
+        </section>
 
+        <section class="card">
+          File Upload
 
-    <section class="card results-card">
-      Extraction Results
-      <button class="btn" id="downloadBtn" type="button" disabled>Download .txt</button>
+          <form id="form">  
+            <div class="drop-area" id="drop">
+              <input id="fileInput" type="file" accept="application/pdf,image/*" />
+              <div id="fileLabel">Drop or Click to upload PDFs or Images</div>
+              <div id="fileMeta"></div>
+              <div id="fileType" class="file-type"></div>
+            </div>
 
-      <div id="output" class="results"></div>
+             <div>
+               <label>Selected File</label>
+               <div id="selectedFile" class="file-info"></div>
+             </div>
 
-    </section>
-  
-    <section class="card glossary-card">
-      Glossary
-      <div class="glossary-content">
-        <p>In development by a world-leading legal and engineering team. This product currently allows to: 1) Extract text from PDF, 3) Visualise PDFs, 2) Download the text extracted from the PDF. </p>
+             <div>
+               <label>File Type</label>
+               <div id="fileSize" class="file-info"></div>
+             </div>
+
+            <div class="row">
+              <button class="btn" id="runBtn" type="submit">Extract text</button>
+              <button class="btn" id="extractImageBtn" type="button">Extract image</button>
+            </div>
+            <div class="row">
+              <button class="btn" id="clearBtn" type="button">Clear Files</button>
+            </div>
+            <div class="space"></div>
+            <div class="muted" id="status"></div>
+          </form>
+
+        </section>
+
+        <section class="card">
+          Document Visualiser
+          <div id="pdfPreview" class="pdf-preview">
+            <p class="muted">File Preview</p>
+          </div>
+        </section>
+
+        <section class="card results-card">
+          Extraction Results 
+          <br><br>
+          <label>The extracted content will be displayed in this card, the user can copy, alter and download.  </label>
+          <br><br>
+          <div class="row">
+            <button class="btn" id="downloadBtn" type="button" disabled>Download .txt</button>
+            <button class="btn" id="copyBtn" type="button" disabled>Copy text</button>
+          </div>
+          <br>
+          <textarea id="output" class="results" readonly></textarea>
+        </section>
+      
+       
       </div>
-    </section>
+      
+      <div class="tab-content" id="legal-generator">
+        <div class="placeholder-content">
+          Legal Document Generator
+          <p>This feature is coming soon. You'll be able to generate legal documents based on templates and user input.</p>
+        </div>
+      </div>
 
-    
 
+      <div class="tab-content" id="law-search">
+        <div class="placeholder-content">
+          Portuguese Law Search
+          <p>This feature is coming soon. You'll be able to generate legal documents based on templates and user input.</p>
+        </div>
+      </div>
+    </div>
   </main>
 
   

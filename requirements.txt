@@ -2,7 +2,5 @@ fastapi
 uvicorn[standard]
 python-multipart
 pypdf
-transformers>=4.39.0
-safetensors
+easyocr
 Pillow
-# torch/torchvision installed in start.ps1 to ensure CUDA wheels

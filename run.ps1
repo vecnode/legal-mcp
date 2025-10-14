@@ -34,36 +34,22 @@ $venvActivate = Join-Path (Resolve-Path .venv) 'Scripts\Activate.ps1'
 Write-Host "Activating virtual environment" -ForegroundColor Yellow
 . $venvActivate
 
-# Check if PyTorch is already installed
-$torchInstalled = pip show torch 2>$null
-if ($torchInstalled) {
-    Write-Host "PyTorch already installed, skipping" -ForegroundColor Green
-} else {
-    # Install PyTorch based on CUDA availability
-    if ($CpuOnly) {
-        Write-Host 'Installing CPU-only PyTorch' -ForegroundColor Yellow
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-    } else {
-        Write-Host 'Installing CUDA-enabled PyTorch (cu121) for RTX 3090' -ForegroundColor Yellow
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-    }
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to install PyTorch"
-        exit 1
-    }
-}
-
 # Check if requirements are already installed
 if (Test-Path requirements.txt) {
     # Check if key packages are already installed
-    $fastapiInstalled = pip show fastapi 2>$null
-    $uvicornInstalled = pip show uvicorn 2>$null
-    $pypdfInstalled = pip show pypdf 2>$null
-    
-    if ($fastapiInstalled -and $uvicornInstalled -and $pypdfInstalled) {
-        Write-Host "Project requirements already installed, skipping" -ForegroundColor Green
-    } else {
+    try {
+        # Check if packages are installed without showing warnings
+        $fastapiInstalled = pip show fastapi --disable-pip-version-check 2>$null
+        $uvicornInstalled = pip show uvicorn --disable-pip-version-check 2>$null
+        $pypdfInstalled = pip show pypdf --disable-pip-version-check 2>$null
+        $easyocrInstalled = pip show easyocr --disable-pip-version-check 2>$null
+        
+        if ($fastapiInstalled -and $uvicornInstalled -and $pypdfInstalled -and $easyocrInstalled) {
+            Write-Host "Project requirements already installed, skipping" -ForegroundColor Green
+        } else {
+            throw "Requirements not found"
+        }
+    } catch {
         Write-Host "Installing missing project requirements" -ForegroundColor Yellow
         pip install -r requirements.txt
         if ($LASTEXITCODE -ne 0) {
@@ -82,83 +68,72 @@ $env:PYTHONUNBUFFERED = '1'
 
 Write-Host "=== Starting legal-atlas server ===" -ForegroundColor Green
 
-# Find an available port starting from 8000
+# Always use port 8000 - kill any existing process on this port
 $port = 8000
-$maxAttempts = 10
-$attempt = 0
-
-do {
-    $portInUse = netstat -an | Select-String ":$port"
-    if ($portInUse) {
-        Write-Host "Port $port is in use, trying next port" -ForegroundColor Yellow
-        $port++
-        $attempt++
-    } else {
-        break
-    }
-} while ($attempt -lt $maxAttempts)
-
-if ($attempt -eq $maxAttempts) {
-    Write-Error "Could not find an available port after $maxAttempts attempts"
-    exit 1
-}
-
 Write-Host "Using port: $port" -ForegroundColor Green
 Write-Host "Server will be available at: http://127.0.0.1:$port" -ForegroundColor Cyan
 
-# Start the server first
-Write-Host "Starting uvicorn server" -ForegroundColor Yellow
-try {
-    # Start server in background using Start-Process
-    $serverProcess = Start-Process -FilePath "uvicorn" -ArgumentList "app:app --host 127.0.0.1 --port $port --reload" -PassThru -WindowStyle Hidden
-    
-    # Wait a moment for server to start
-    Write-Host "Waiting for server to start" -ForegroundColor Yellow
-    Start-Sleep -Seconds 5
-    
-    # Check if server is actually running
-    $portCheck = netstat -an | Select-String ":$port"
-    if (-not $portCheck) {
-        Write-Warning "Server may not have started properly. Trying to open browser anyway..."
-    } else {
-        Write-Host "Server confirmed running on port $port" -ForegroundColor Green
+# Kill any process using port 8000
+$portProcesses = netstat -ano | Select-String ":$port " | ForEach-Object {
+    if ($_ -match '\s+(\d+)$') {
+        $matches[1]
     }
-    
-    # Open browser unless skipped
-    if (-not $SkipBrowser) {
-        Write-Host "Opening browser" -ForegroundColor Yellow
-        
-        # Try browsers in order of preference
-        $browsers = @(
-            @{ Name = "Microsoft Edge"; Path = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" },
-            @{ Name = "Microsoft Edge"; Path = "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe" },
-            @{ Name = "Google Chrome"; Path = "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe" },
-            @{ Name = "Google Chrome"; Path = "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe" },
-            @{ Name = "Mozilla Firefox"; Path = "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe" },
-            @{ Name = "Mozilla Firefox"; Path = "${env:ProgramFiles}\Mozilla Firefox\firefox.exe" }
-        )
-        
-        $browserFound = $false
-        foreach ($browser in $browsers) {
-            if (Test-Path $browser.Path) {
-                Write-Host "Opening with $($browser.Name)" -ForegroundColor Cyan
-                Start-Process $browser.Path "http://127.0.0.1:$port"
-                $browserFound = $true
-                break
+}
+
+if ($portProcesses) {
+    Write-Host "Killing existing processes on port $port" -ForegroundColor Yellow
+    foreach ($processId in $portProcesses) {
+        try {
+            $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+            if ($process) {
+                Write-Host "Killing process $processId ($($process.ProcessName))" -ForegroundColor Red
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
             }
+        } catch {
+            Write-Host "Could not kill process $processId" -ForegroundColor Yellow
         }
-        
-        if (-not $browserFound) {
-            Write-Host "No preferred browser found, using default" -ForegroundColor Yellow
-            Start-Process "http://127.0.0.1:$port"
+    }
+    Start-Sleep -Seconds 2  # Wait for processes to fully terminate
+}
+
+# Start the server directly in this window to see debug output
+Write-Host "Starting uvicorn server" -ForegroundColor Yellow
+Write-Host "Server will run in this window - you'll see all debug output" -ForegroundColor Cyan
+Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
+
+# Open browser unless skipped
+if (-not $SkipBrowser) {
+    Write-Host "Opening browser" -ForegroundColor Yellow
+    
+    # Try browsers in order of preference
+    $browsers = @(
+        @{ Name = "Microsoft Edge"; Path = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" },
+        @{ Name = "Microsoft Edge"; Path = "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe" },
+        @{ Name = "Google Chrome"; Path = "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe" },
+        @{ Name = "Google Chrome"; Path = "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe" },
+        @{ Name = "Mozilla Firefox"; Path = "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe" },
+        @{ Name = "Mozilla Firefox"; Path = "${env:ProgramFiles}\Mozilla Firefox\firefox.exe" }
+    )
+    
+    $browserFound = $false
+    foreach ($browser in $browsers) {
+        if (Test-Path $browser.Path) {
+            Write-Host "Opening with $($browser.Name)" -ForegroundColor Cyan
+            Start-Process $browser.Path "http://127.0.0.1:$port"
+            $browserFound = $true
+            break
         }
     }
     
-    # Wait for server process to complete
-    Write-Host "Server is running. Press Ctrl+C to stop." -ForegroundColor Green
-    Write-Host "Server process ID: $($serverProcess.Id)" -ForegroundColor Cyan
-    $serverProcess.WaitForExit()
-    
+    if (-not $browserFound) {
+        Write-Host "No preferred browser found, using default" -ForegroundColor Yellow
+        Start-Process "http://127.0.0.1:$port"
+    }
+}
+
+# Start server directly - this will show all output in this window
+try {
+    uvicorn app:app --host 127.0.0.1 --port $port --reload
 } catch {
     Write-Error "Failed to start server: $_"
     exit 1

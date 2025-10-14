@@ -1,2 +1,2 @@
 # legal-atlas
-a legal atlas testing ground
+a legal atlas project code

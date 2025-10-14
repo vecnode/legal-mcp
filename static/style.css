@@ -27,47 +27,107 @@ h1 {
   font-size: 22px; 
 }
 
-h3 {
-  margin: 0 0 16px 0;
-  font-size: 18px;
-  color: var(--text);
+
+#fileLabel {
+  font-size: 14px;
+}
+
+#status {
+  font-size: 14px;
 }
 
 main { 
   max-width: 1100px; 
   margin: 24px auto; 
   padding: 0 16px; 
+  overflow-y: hidden;
+}
+
+.main-container {
+  background: var(--panel); 
+  border: 1px solid #1c2430; 
+  border-radius: 16px; 
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  overflow: hidden;
+  width: 100%;
+  height: 1020px;
+}
+
+.tab-bar {
+  display: flex;
+  background: #0e141c;
+  border-bottom: 1px solid #1c2430;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 16px 24px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+  background: #1a1f2a;
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--panel);
+}
+
+.tab-content {
+  display: none;
+  padding: 24px;
+}
+
+.tab-content.active {
   display: grid; 
   grid-template-columns: 1fr 1.2fr; 
   gap: 18px; 
 }
 
-.results-card {
-  max-width: 1100px;
-  margin: 24px auto;
-  padding: 0 16px;
+.tab-content.active .results-card {
+  grid-column: 1 / -1;
+  max-width: none;
+  margin: 0;
   min-height: 400px;
 }
 
-.glossary-card {
-  max-width: 1100px;
-  margin: 24px auto;
-  padding: 0 16px;
+.tab-content.active  {
+  grid-column: 1 / -1;
+  max-width: none;
+  margin: 0;
   min-height: 200px;
 }
 
-.glossary-card h3 {
-  margin-bottom: 20px;
+.glossary-card {
+  grid-column: 1 / -1;
+  max-width: none;
+  margin: 0;
 }
 
-.glossary-content {
-  padding: 20px;
-  min-height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.placeholder-content {
+  text-align: center;
+  padding: 60px 20px;
   color: var(--muted);
 }
+
+.placeholder-content h2 {
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+
+
+
+
 
 .card { 
   background: var(--panel); 
@@ -90,10 +150,16 @@ input[type="file"] {
   border: 2px solid black;
   border-radius: 8px;
   padding: 20px;
+  padding-top: 24px;
   text-align: center;
   cursor: pointer;
   background: var(--panel);
   margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
 }
 
 .pdf-preview {
@@ -127,6 +193,19 @@ input[type="file"] {
   margin-top: 8px;
 }
 
+.file-info {
+  font-size: 13px;
+  color: var(--text);
+  padding: 8px;
+  background: #0e141c;
+  border: 1px solid #2a384a;
+  border-radius: 8px;
+  margin-top: 4px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
 .row { 
   display: grid; 
   grid-template-columns: 1fr 1fr; 
@@ -155,11 +234,17 @@ input[type="file"] {
 
 .results { 
   white-space: pre-wrap; 
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
   line-height: 1.4; 
   font-size: 13px; 
-  min-height: 300px;
+  height: 200px;
+  width: 100%;
+  overflow-y: auto;
   padding: 16px;
+  border: 1px solid #1c2430;
+  border-radius: 8px;
+  background: #0e141c;
+  color: var(--text);
+  resize: vertical;
 }
 
 .pill { 
