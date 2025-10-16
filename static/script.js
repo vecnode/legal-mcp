@@ -1,3 +1,7 @@
+// Initialize API instance
+const api = new LegalAtlasAPI();
+
+// DOM elements
 const form = document.getElementById('form');
 const fileInput = document.getElementById('fileInput');
 const fileLabel = document.getElementById('fileLabel');
@@ -8,16 +12,23 @@ const statusEl = document.getElementById('status');
 const output = document.getElementById('output');
 const pdfPreview = document.getElementById('pdfPreview');
 const clearBtn = document.getElementById('clearBtn');
-const extractImageBtn = document.getElementById('extractImageBtn');
 const selectedFile = document.getElementById('selectedFile');
 const fileSize = document.getElementById('fileSize');
-
 const drop = document.getElementById('drop');
 
+// Legal Document Generator elements
+const inputText = document.getElementById('inputText');
+const taskSelect = document.getElementById('taskSelect');
+const languageSelect = document.getElementById('languageSelect');
+const processBtn = document.getElementById('processBtn');
+const clearTextBtn = document.getElementById('clearTextBtn');
+const processStatus = document.getElementById('processStatus');
+const processedOutput = document.getElementById('processedOutput');
+const downloadProcessedBtn = document.getElementById('downloadProcessedBtn');
+const copyProcessedBtn = document.getElementById('copyProcessedBtn');
+
 // Initialize buttons as disabled
-extractImageBtn.disabled = true;
-runBtn.disabled = true;
-copyBtn.disabled = true;
+UIHelpers.disableButtons(runBtn, copyBtn, downloadProcessedBtn, copyProcessedBtn);
 
 // Prevent default drag and drop behavior on the entire page
 // but allow the drop area to handle its own events
@@ -102,20 +113,9 @@ copyBtn.addEventListener('click', async () => {
   }
   
   try {
-    await navigator.clipboard.writeText(text);
-    // Temporarily change button text to show success
-    const originalText = copyBtn.textContent;
-    copyBtn.textContent = 'Copied';
-    copyBtn.style.background = '#28a745';
-    
-    setTimeout(() => {
-      copyBtn.textContent = originalText;
-      copyBtn.style.background = '';
-    }, 1500);
+    await FileUtils.copyToClipboard(text);
+    UIHelpers.showButtonSuccess(copyBtn);
   } catch (err) {
-    // Fallback for older browsers
-    output.select();
-    document.execCommand('copy');
     alert('Text copied to clipboard');
   }
 });
@@ -126,99 +126,15 @@ clearBtn.addEventListener('click', () => {
   fileLabel.textContent = 'Drop or Click to upload PDFs or Images';
   document.getElementById('fileType').textContent = '';
   pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
-  output.value = '';
-  statusEl.textContent = '';
-  downloadBtn.disabled = true;
+  UIHelpers.clearElements(output);
+  UIHelpers.clearStatus(statusEl);
+  UIHelpers.disableButtons(downloadBtn, runBtn, copyBtn);
   selectedFile.textContent = '';
   fileSize.textContent = '';
-  // Disable both buttons when cleared
-  extractImageBtn.disabled = true;
-  runBtn.disabled = true;
-  copyBtn.disabled = true;
 });
 
-// Image extraction handler
-extractImageBtn.addEventListener('click', async () => {
-  const f = fileInput.files?.[0];
-  if (!f) { 
-    alert('Choose an image file first.'); 
-    return; 
-  }
 
-  // Check if it's an image file
-  if (!f.type.startsWith('image/')) {
-    alert('Please select an image file (PNG, JPG, JPEG).');
-    return;
-  }
 
-  extractImageBtn.disabled = true;
-  runBtn.disabled = true;
-  downloadBtn.disabled = true;
-  output.value = '';
-  
-  // Show progress bar
-  statusEl.innerHTML = `
-    <div style="background: #1a1f2a; border-radius: 8px; padding: 8px; margin: 8px 0;">
-      <div style="color: #6aa7ff; font-size: 14px; margin-bottom: 4px;">Processing image with OCR</div>
-      <div style="background: #0b0f14; height: 8px; border-radius: 4px; overflow: hidden;">
-        <div id="progressBar" style="background: #6aa7ff; height: 100%; width: 0%; transition: width 0.3s ease;"></div>
-      </div>
-      <div id="progressText" style="color: #9fb3c8; font-size: 12px; margin-top: 4px;">Starting...</div>
-    </div>
-  `;
-
-  // Simulate progress updates
-  const progressBar = document.getElementById('progressBar');
-  const progressText = document.getElementById('progressText');
-  
-  const updateProgress = (percent) => {
-    progressBar.style.width = percent + '%';
-  };
-
-  // Start progress simulation
-  updateProgress(10);
-  await new Promise(resolve => setTimeout(resolve, 200));
-  
-  updateProgress(25);
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  updateProgress(40);
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  const body = new FormData();
-  body.append('file', f);
-
-  try {
-    updateProgress(60);
-    
-    const res = await fetch('/api/extract-image', { method: 'POST', body });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
-
-    updateProgress(90);
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    const data = await res.json();
-    output.value = data.extracted_text;
-    
-    updateProgress(100);
-    setTimeout(() => {
-      statusEl.textContent = `OCR completed: ${data.filename}`;
-    }, 500);
-    
-    downloadBtn.disabled = false;
-    copyBtn.disabled = false;
-
-  } catch (err) {
-    output.value = `Error: ${err.message}`;
-    statusEl.textContent = 'OCR failed';
-  } finally {
-    extractImageBtn.disabled = false;
-    runBtn.disabled = false;
-  }
-});
 function onFileChange() {
   const f = fileInput.files?.[0];
   if (!f) { 
@@ -227,15 +143,13 @@ function onFileChange() {
     document.getElementById('fileType').textContent = '';
     selectedFile.textContent = '';
     fileSize.textContent = '';
-    // Disable both buttons when no file
-    extractImageBtn.disabled = true;
-    runBtn.disabled = true;
+    UIHelpers.disableButtons(runBtn);
     return; 
   }
   
   // Get file extension
   const fileName = f.name;
-  const fileExtension = fileName.split('.').pop()?.toLowerCase() || 'unknown';
+  const fileExtension = FileUtils.getFileExtension(fileName);
   
   // Simple console log
   console.log('File uploaded:', fileName, 'Type:', fileExtension);
@@ -252,13 +166,12 @@ function onFileChange() {
   
   // Update UI
   fileLabel.textContent = 'Selected File';
-  const mb = (f.size / (1024*1024)).toFixed(2);
+  const mb = FileUtils.formatFileSize(f.size);
   selectedFile.textContent = fileName;
   fileSize.textContent = `${fileType} (${mb} MB)`;
   
-  // Enable/disable buttons based on file type
-  extractImageBtn.disabled = !isImage;  // Only enable for images
-  runBtn.disabled = false;  // Always enable for PDFs and images
+  // Enable run button
+  UIHelpers.enableButtons(runBtn);
   
   // Create preview based on file type
   const fileURL = URL.createObjectURL(f);
@@ -285,40 +198,90 @@ form.addEventListener('submit', async (e) => {
   const f = fileInput.files?.[0];
   if (!f) { alert('Choose a PDF first.'); return; }
 
-  runBtn.disabled = true; downloadBtn.disabled = true; output.textContent = ''; statusEl.textContent = 'Uploading…';
-
-  const body = new FormData();
-  body.append('file', f);
+  UIHelpers.disableButtons(runBtn, downloadBtn);
+  UIHelpers.clearElements(output);
+  UIHelpers.setStatus(statusEl, 'Processing PDF');
 
   try {
-    const res = await fetch('/api/extract-text', { method: 'POST', body });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Server error (${res.status})`);
-    }
-    const data = await res.json();
-    statusEl.textContent = `Processed ${data.num_pages} page(s).`;
+    const data = await api.extractTextFromPDF(f);
+    alert(`Processed ${data.num_pages} page(s).`);
+    UIHelpers.clearStatus(statusEl);
 
     // Set the extracted text in the textarea
     output.value = data.full_text || '';
     
     // Enable download functionality
-    const blob = new Blob([data.full_text || ''], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    downloadBtn.disabled = false;
-    copyBtn.disabled = false;
+    UIHelpers.enableButtons(downloadBtn, copyBtn);
     downloadBtn.onclick = () => {
-      const a = document.createElement('a');
-      a.href = url; a.download = (f.name.replace(/\.pdf$/i, '') || 'output') + '.txt';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const filename = (f.name.replace(/\.pdf$/i, '') || 'output') + '.txt';
+      FileUtils.createDownloadBlob(data.full_text || '', filename);
     };
   } catch (err) {
     console.error(err);
-    statusEl.textContent = '';
-    output.value = `Error: ${err.message}`;
+    alert(`Error: ${err.message}`);
+    UIHelpers.clearStatus(statusEl);
+    UIHelpers.clearElements(output);
   } finally {
-    runBtn.disabled = false;
+    UIHelpers.enableButtons(runBtn);
+  }
+});
+
+// Process text with AI
+processBtn.addEventListener('click', async () => {
+  const text = inputText.value.trim();
+  if (!text) {
+    alert('Please enter some text to process.');
+    return;
+  }
+
+  const task = taskSelect.value;
+  const language = languageSelect.value;
+  
+  UIHelpers.disableButtons(processBtn, downloadProcessedBtn, copyProcessedBtn);
+  UIHelpers.clearElements(processedOutput);
+  UIHelpers.setStatus(processStatus, 'Processing with AI...');
+
+  try {
+    const data = await api.processTextWithAI(text, task, language);
+    processedOutput.value = data.processed_text;
+    UIHelpers.setStatus(processStatus, `AI processing completed (${task})`);
+
+    // Enable download functionality
+    UIHelpers.enableButtons(downloadProcessedBtn, copyProcessedBtn);
+    downloadProcessedBtn.onclick = () => {
+      const filename = `ai-processed-${task}.txt`;
+      FileUtils.createDownloadBlob(data.processed_text, filename);
+    };
+
+  } catch (err) {
+    console.error(err);
+    UIHelpers.clearStatus(processStatus);
+    processedOutput.value = `Error: ${err.message}`;
+  } finally {
+    UIHelpers.enableButtons(processBtn);
+  }
+});
+
+// Clear text functionality
+clearTextBtn.addEventListener('click', () => {
+  UIHelpers.clearElements(inputText, processedOutput);
+  UIHelpers.clearStatus(processStatus);
+  UIHelpers.disableButtons(downloadProcessedBtn, copyProcessedBtn);
+});
+
+// Copy processed text functionality
+copyProcessedBtn.addEventListener('click', async () => {
+  const text = processedOutput.value;
+  if (!text.trim()) {
+    alert('No text to copy');
+    return;
+  }
+  
+  try {
+    await FileUtils.copyToClipboard(text);
+    UIHelpers.showButtonSuccess(copyProcessedBtn);
+  } catch (err) {
+    alert('Text copied to clipboard');
   }
 });
 

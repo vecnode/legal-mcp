@@ -43,9 +43,9 @@ if (Test-Path requirements.txt) {
         $fastapiInstalled = pip show fastapi --disable-pip-version-check 2>$null
         $uvicornInstalled = pip show uvicorn --disable-pip-version-check 2>$null
         $pypdfInstalled = pip show pypdf --disable-pip-version-check 2>$null
-        $easyocrInstalled = pip show easyocr --disable-pip-version-check 2>$null
+        $openaiInstalled = pip show openai --disable-pip-version-check 2>$null
         
-        if ($fastapiInstalled -and $uvicornInstalled -and $pypdfInstalled -and $easyocrInstalled) {
+        if ($fastapiInstalled -and $uvicornInstalled -and $pypdfInstalled -and $openaiInstalled) {
             Write-Host "Project requirements already installed, skipping" -ForegroundColor Green
         } else {
             throw "Requirements not found"

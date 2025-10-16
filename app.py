@@ -1,5 +1,6 @@
 import io
-from typing import List, Optional, Tuple
+import os
+from typing import List, Optional
 from datetime import datetime
 
 from fastapi import FastAPI, File, UploadFile, Form
@@ -8,21 +9,11 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from pypdf import PdfReader
+import openai
+from dotenv import load_dotenv
 
-from PIL import Image
-
-import numpy as np
-
-from fastapi import FastAPI, File, UploadFile, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-
-from pypdf import PdfReader
-
-from PIL import Image
-
-import numpy as np
+# Load environment variables from .env file
+load_dotenv()
 
 
 
@@ -42,166 +33,68 @@ app.add_middleware(
 # Serve the static front-end
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-_easyocr_reader = None
-_easyocr_available = True
 
-def load_easyocr():
-    global _easyocr_reader, _easyocr_available
-    if _easyocr_reader is None and _easyocr_available:
-        print("Loading EasyOCR")
-        try:
-            # Import EasyOCR only when needed to avoid startup crashes
-            import easyocr
-            import os
-            
-            # Force CPU mode to avoid GPU/DLL issues
-            os.environ['CUDA_VISIBLE_DEVICES'] = ''
-            os.environ['TORCH_HOME'] = os.path.join(os.getcwd(), '.torch_cache')
-            
-            # Try to load with minimal dependencies
-            _easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
-            print("EasyOCR loaded successfully (CPU mode)")
-        except Exception as e:
-            print(f"Error loading EasyOCR: {e}")
-            print("EasyOCR will be disabled. Image OCR functionality will not be available.")
-            print("To fix this issue, try:")
-            print("1. pip uninstall torch easyocr")
-            print("2. pip install torch==2.0.1+cpu torchvision==0.15.2+cpu -f https://download.pytorch.org/whl/torch_stable.html")
-            print("3. pip install easyocr==1.7.0")
-            _easyocr_available = False
-            _easyocr_reader = None
 
-def ocr_pil(img: Image.Image) -> str:
-    load_easyocr()
-    
-    if not _easyocr_available or _easyocr_reader is None:
-        return "OCR functionality is not available. EasyOCR failed to load."
-    
-    # Convert PIL image to numpy array for EasyOCR
-    img_array = np.array(img)
-    
-    # Use EasyOCR to extract text
-    results = _easyocr_reader.readtext(img_array)
-    
-    # Combine all detected text
-    extracted_text = ""
-    for (bbox, text, confidence) in results:
-        if confidence > 0.5:  # Only include high-confidence text
-            extracted_text += text + " "
-    
-    return extracted_text.strip()
 
-def _largest_image_from_page(reader_page) -> Optional[Tuple[bytes, str]]:
+
+def process_with_openai(text: str, task: str = "analyze", language: str = "english") -> str:
     """
-    Try to extract the largest embedded image (by pixel area) from a page.
-    Returns (image_bytes, image_ext) or None.
+    Process text using OpenAI API
     """
-    # pypdf exposed APIs evolved; try page.images if available, else get_images()
-    images = []
-    if hasattr(reader_page, "images"):
-        images = list(reader_page.images)
-    elif hasattr(reader_page, "get_images"):
-        # older signature: get_images(full=True) -> list of tuples
-        try:
-            images = reader_page.get_images(full=True)  # PyPDF2-style
-        except TypeError:
-            images = reader_page.get_images()
-    if not images:
-        return None
-
-    # Normalize to a list of dicts with width/height/xref
-    norm = []
-    for item in images:
-        try:
-            if isinstance(item, dict):
-                xref = item.get("xref")
-                width = int(item.get("width", 0))
-                height = int(item.get("height", 0))
-                smask = item.get("smask")
-            else:
-                # PyPDF2 tuple format: (xref, smask, width, height, bpc, colorspace, filter, decode, name, ...) 
-                # Handle ImageFile objects and other types gracefully
-                try:
-                    xref = item[0] if len(item) > 0 else None
-                    smask = item[1] if len(item) > 1 else None
-                    width = int(item[2] if len(item) > 2 else 0)
-                    height = int(item[3] if len(item) > 3 else 0)
-                except (TypeError, AttributeError):
-                    # Skip items that can't be processed (like ImageFile objects)
-                    continue
-            if xref is None:
-                continue
-            norm.append({"xref": xref, "width": width, "height": height, "smask": smask})
-        except Exception:
-            # Skip any problematic items and continue processing
-            continue
-
-    if not norm:
-        return None
-
-    norm.sort(key=lambda d: d["width"] * d["height"], reverse=True)
-    best = norm[0]
-
-    # pypdf reader provides .images but extraction needs PdfReader.extract_image(xref) via reader
-    # We need the owning reader; access through the page object's indirect reference
-    # Workaround: PdfReader's public API since v3: reader.images and reader.extract_image(xref).
-    # Here we get the reader by walking attributes (page._pdf or page.pdf)
-    pdf_reader = getattr(reader_page, "pdf", None) or getattr(reader_page, "_pdf", None)
-    if pdf_reader is None and hasattr(reader_page, "indirect_reference"):
-        pdf_reader = getattr(reader_page.indirect_reference, "pdf", None)
-
-    if pdf_reader is None:
-        return None
-
     try:
-        img = pdf_reader.extract_image(best["xref"])
-        img_bytes = img.get("image")
-        img_ext = img.get("ext", "png")
-        if img_bytes:
-            return img_bytes, img_ext
-    except Exception:
-        pass
+        # Get OpenAI API key from environment variables
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return "Error: OPENAI_API_KEY not found in environment variables. Please set it in your .env file."
+        
+        client = openai.OpenAI(api_key=api_key)
+        
+        if task == "analyze":
+            prompt = f"Please analyze the following text and provide insights:\n\n{text}"
+        elif task == "summarize":
+            prompt = f"Please summarize the following text (maximum 220 words):\n\n{text}"
+        elif task == "extract_key_points":
+            prompt = f"Please extract the key points from the following text (max 10 key points):\n\n{text}"
+        else:
+            prompt = f"Please process the following text:\n\n{text}"
+        
+        # Add language instruction to the prompt
+        if language == "portuguese":
+            prompt += "\n\nAnswer only using Portuguese words."
+        else:
+            prompt += "\n\nAnswer only using English words."
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful Law assistant that processes, analyzes and summarizest text documents. You are very experienced and will help users understand and generate legal documents for Portugal, UK and Europe Law. Be concise in the answers you provide and not very long, no emojis."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"Error processing with OpenAI: {str(e)}"
 
-    return None
 
-def pdf_bytes_to_text_or_ocr(pdf_bytes: bytes):
+def pdf_bytes_to_text(pdf_bytes: bytes):
+    """
+    Extract text from PDF bytes using pypdf
+    """
     pages: List[dict] = []
     reader = PdfReader(io.BytesIO(pdf_bytes))
 
     for i, page in enumerate(reader.pages):
         try:
-            native_text = (page.extract_text() or "").strip()
-            if native_text:
-                pages.append({"page": i + 1, "source": "native text", "text": native_text})
-                continue
-
-            # If no native text, try to extract the largest embedded image and OCR it.
-            try:
-                extracted = _largest_image_from_page(page)
-                if extracted is None:
-                    # Nothing to OCR; return empty
-                    pages.append({"page": i + 1, "source": "OCR text", "text": ""})
-                    continue
-
-                img_bytes, img_ext = extracted
-                try:
-                    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                except Exception:
-                    pages.append({"page": i + 1, "source": "OCR text", "text": ""})
-                    continue
-
-                text = ocr_pil(img)
-                pages.append({"page": i + 1, "source": "OCR text", "text": text})
-            except Exception as e:
-                # If image extraction fails, add empty page and continue
-                pages.append({"page": i + 1, "source": "OCR text", "text": f"[Image processing failed: {str(e)}]"})
-                continue
+            text = (page.extract_text() or "").strip()
+            pages.append({"page": i + 1, "text": text})
         except Exception as e:
-            # If entire page processing fails, add error message and continue
-            pages.append({"page": i + 1, "source": "error", "text": f"[Page processing failed: {str(e)}]"})
-            continue
+            pages.append({"page": i + 1, "text": f"[Page processing failed: {str(e)}]"})
 
-    full_text = "\n\n".join(f"=== Page {p['page']} ({p['source']}) ===\n{p['text']}" for p in pages)
+    full_text = "\n\n".join(f"=== Page {p['page']} ===\n{p['text']}" for p in pages)
     return pages, full_text
 
 
@@ -215,98 +108,55 @@ def root():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "easyocr": "ready"}
+    return {"status": "ok", "openai": "ready"}
 
 @app.post("/api/extract-text")
-async def extract_text(
-    file: UploadFile = File(...),
-):
+async def extract_text(file: UploadFile = File(...)):
+    """
+    Extract text from PDF using pypdf only (no OpenAI processing)
+    Used by the Text Extractor tab
+    """
     if file.content_type not in ("application/pdf", "application/octet-stream"):
         return JSONResponse({"error": "Please upload a PDF file."}, status_code=400)
 
     pdf_bytes = await file.read()
 
     try:
-        pages, full_text = pdf_bytes_to_text_or_ocr(pdf_bytes)
+        pages, full_text = pdf_bytes_to_text(pdf_bytes)
     except Exception as e:
         return JSONResponse({"error": f"Failed to process PDF: {e}"}, status_code=500)
 
-    return {"num_pages": len(pages), "pages": pages, "full_text": full_text}
+    return {
+        "num_pages": len(pages), 
+        "pages": pages, 
+        "full_text": full_text
+    }
 
-
-
-
-@app.post("/api/extract-image")
-async def extract_image(
-    file: UploadFile = File(...),
+@app.post("/api/process-text")
+async def process_text(
+    text: str = Form(...),
+    task: str = Form("analyze"),
+    language: str = Form("english")
 ):
-    # Check if it's an image file
-    if not file.content_type or not file.content_type.startswith("image/"):
-        return JSONResponse({"error": "Please upload an image file (PNG, JPG, JPEG)."}, status_code=400)
-
+    """
+    Process text using OpenAI API
+    Used by the Legal Document Generator tab
+    """
     try:
-        print(f"Processing image: {file.filename}, content_type: {file.content_type}")
-        
-        # Read the uploaded image
-        image_bytes = await file.read()
-        print(f"Image size: {len(image_bytes)} bytes")
-        
-        # Open and normalize the image format
-        image = Image.open(io.BytesIO(image_bytes))
-        print(f"Image opened: {image.size}, mode: {image.mode}")
-        
-        # Convert to RGB format (required by TrOCR)
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-            print(f"Converted to RGB: {image.size}, mode: {image.mode}")
-        
-        # Enhance image for better OCR
-        from PIL import ImageEnhance, ImageFilter
-        
-        # Convert to grayscale first (often better for OCR)
-        if image.mode != 'L':
-            image = image.convert('L')
-            print(f"Converted to grayscale: {image.size}, mode: {image.mode}")
-        
-        # Increase contrast for better text recognition
-        enhancer = ImageEnhance.Contrast(image)
-        image = enhancer.enhance(2.0)  # Higher contrast
-        
-        # Increase brightness if needed
-        enhancer = ImageEnhance.Brightness(image)
-        image = enhancer.enhance(1.1)
-        
-        # Convert back to RGB for TrOCR
-        image = image.convert('RGB')
-        print(f"Final image: {image.size}, mode: {image.mode}")
-        
-        # Optional: Resize if image is too large (TrOCR works best with reasonable sizes)
-        max_size = 1024
-        if max(image.size) > max_size:
-            ratio = max_size / max(image.size)
-            new_size = (int(image.size[0] * ratio), int(image.size[1] * ratio))
-            image = image.resize(new_size, Image.Resampling.LANCZOS)
-            print(f"Resized to: {image.size}")
-        
-        print("Image preprocessing completed")
-        
-        # Process with EasyOCR
-        print("Processing with EasyOCR")
-        extracted_text = ocr_pil(image)
-        print(f"EasyOCR extracted text: '{extracted_text}'")
-        
-        return {
-            "filename": file.filename,
-            "content_type": file.content_type,
-            "extracted_text": extracted_text,
-            "source": "OCR from image"
-        }
-        
+        processed_text = process_with_openai(text, task, language)
     except Exception as e:
-        print(f"Error processing image: {e}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse({"error": f"Failed to process image: {str(e)}"}, status_code=500)
+        return JSONResponse({"error": f"Failed to process text: {e}"}, status_code=500)
+
+    return {
+        "original_text": text,
+        "processed_text": processed_text,
+        "task": task,
+        "language": language
+    }
+
+
+
+
 
 
 

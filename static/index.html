@@ -53,11 +53,11 @@
 
             <div class="row">
               <button class="btn" id="runBtn" type="submit">Extract text</button>
-              <button class="btn" id="extractImageBtn" type="button">Extract image</button>
-            </div>
-            <div class="row">
               <button class="btn" id="clearBtn" type="button">Clear Files</button>
+
             </div>
+
+            
             <div class="space"></div>
             <div class="muted" id="status"></div>
           </form>
@@ -73,9 +73,7 @@
 
         <section class="card results-card">
           Extraction Results 
-          <br><br>
-          <label>The extracted content will be displayed in this card, the user can copy, alter and download.  </label>
-          <br><br>
+          <br>
           <div class="row">
             <button class="btn" id="downloadBtn" type="button" disabled>Download .txt</button>
             <button class="btn" id="copyBtn" type="button" disabled>Copy text</button>
@@ -86,12 +84,59 @@
       
        
       </div>
+
       
       <div class="tab-content" id="legal-generator">
-        <div class="placeholder-content">
-          Legal Document Generator
-          <p>This feature is coming soon. You'll be able to generate legal documents based on templates and user input.</p>
-        </div>
+        
+        <section class="card glossary-card">
+          About
+          <br><br>
+          <label>This page allows you to process text using AI.<br> 
+            You can analyze, summarize, or extract key points from any text using OpenAI's API.</label>
+        </section>
+
+        <section class="card">
+          Text Processing
+          <br>
+          <textarea id="inputText" class="input-text" placeholder="Paste your text here"></textarea>
+          
+          <div class="row">
+            Processing Task:
+            <select id="taskSelect">
+              <option value="analyze">Analyze</option>
+              <option value="summarize">Summarize</option>
+              <option value="extract_key_points">Extract Key Points</option>
+            </select>
+          </div>
+          
+          <div class="row">
+            Language:
+            <select id="languageSelect">
+              <option value="english">English</option>
+              <option value="portuguese">Portuguese (PT)</option>
+            </select>
+          </div>
+          
+          <div class="row">
+            <button class="btn" id="processBtn" type="button">Process with AI</button>
+            <button class="btn" id="clearTextBtn" type="button">Clear Text</button>
+          </div>
+          
+          <div class="space"></div>
+          <div class="muted" id="processStatus"></div>
+        </section>
+
+        <section class="card results-card">
+          AI Results
+          <br>
+          <div class="row">
+            <button class="btn" id="downloadProcessedBtn" type="button" disabled>Download .txt</button>
+            <button class="btn" id="copyProcessedBtn" type="button" disabled>Copy text</button>
+          </div>
+          <br>
+          <textarea id="processedOutput" class="results" readonly></textarea>
+        </section>
+        
       </div>
 
     </div>
@@ -99,6 +144,7 @@
 
   
 
+  <script src="/static/api.js"></script>
   <script src="/static/script.js"></script>
 </body>
 </html>
