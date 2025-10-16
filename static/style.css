@@ -274,3 +274,97 @@ input[type="file"] {
 .space { 
   height: 8px; 
 }
+
+/* ===== FORM STYLES ===== */
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid #1e2733;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+
+
+/* ===== STATUS MESSAGE STYLES ===== */
+
+.status-message {
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 14px;
+  transition: opacity 0.3s ease;
+}
+
+.status-message.info {
+  background: rgba(106, 167, 255, 0.1);
+  border: 1px solid rgba(106, 167, 255, 0.3);
+  color: var(--accent);
+}
+
+.status-message.success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.status-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* ===== SEARCH RESULTS STYLES - REMOVED FOR PLAIN TEXT ===== */
+
+.search-result-item {
+  background: var(--bg);
+  border: 1px solid #1e2733;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.search-result-item h4 {
+  margin: 0 0 8px 0;
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.search-result-item .result-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.search-result-item .result-url {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.search-result-item .result-url:hover {
+  text-decoration: underline;
+}

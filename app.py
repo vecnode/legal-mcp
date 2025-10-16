@@ -1,5 +1,6 @@
 import io
 from typing import List, Optional, Tuple
+from datetime import datetime
 
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,8 +10,21 @@ from fastapi.staticfiles import StaticFiles
 from pypdf import PdfReader
 
 from PIL import Image
-import easyocr
+
 import numpy as np
+
+from fastapi import FastAPI, File, UploadFile, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+from pypdf import PdfReader
+
+from PIL import Image
+
+import numpy as np
+
+
 
 
 
@@ -29,21 +43,40 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 _easyocr_reader = None
+_easyocr_available = True
 
 def load_easyocr():
-    global _easyocr_reader
-    if _easyocr_reader is None:
+    global _easyocr_reader, _easyocr_available
+    if _easyocr_reader is None and _easyocr_available:
         print("Loading EasyOCR")
         try:
-            # EasyOCR will automatically detect and use GPU if available
-            _easyocr_reader = easyocr.Reader(['en'])
-            print("EasyOCR loaded successfully")
+            # Import EasyOCR only when needed to avoid startup crashes
+            import easyocr
+            import os
+            
+            # Force CPU mode to avoid GPU/DLL issues
+            os.environ['CUDA_VISIBLE_DEVICES'] = ''
+            os.environ['TORCH_HOME'] = os.path.join(os.getcwd(), '.torch_cache')
+            
+            # Try to load with minimal dependencies
+            _easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+            print("EasyOCR loaded successfully (CPU mode)")
         except Exception as e:
             print(f"Error loading EasyOCR: {e}")
-            raise
+            print("EasyOCR will be disabled. Image OCR functionality will not be available.")
+            print("To fix this issue, try:")
+            print("1. pip uninstall torch easyocr")
+            print("2. pip install torch==2.0.1+cpu torchvision==0.15.2+cpu -f https://download.pytorch.org/whl/torch_stable.html")
+            print("3. pip install easyocr==1.7.0")
+            _easyocr_available = False
+            _easyocr_reader = None
 
 def ocr_pil(img: Image.Image) -> str:
     load_easyocr()
+    
+    if not _easyocr_available or _easyocr_reader is None:
+        return "OCR functionality is not available. EasyOCR failed to load."
+    
     # Convert PIL image to numpy array for EasyOCR
     img_array = np.array(img)
     
@@ -258,24 +291,8 @@ async def extract_image(
         print("Image preprocessing completed")
         
         # Process with EasyOCR
-        print("Loading EasyOCR")
-        load_easyocr()  # Ensure EasyOCR is loaded
-        print("EasyOCR loaded successfully")
-        
         print("Processing with EasyOCR")
-        # Convert PIL image to numpy array for EasyOCR
-        img_array = np.array(image)
-        
-        # Use EasyOCR to extract text
-        results = _easyocr_reader.readtext(img_array)
-        
-        # Combine all detected text
-        extracted_text = ""
-        for (bbox, text, confidence) in results:
-            if confidence > 0.5:  # Only include high-confidence text
-                extracted_text += text + " "
-        
-        extracted_text = extracted_text.strip()
+        extracted_text = ocr_pil(image)
         print(f"EasyOCR extracted text: '{extracted_text}'")
         
         return {
@@ -290,5 +307,8 @@ async def extract_image(
         import traceback
         traceback.print_exc()
         return JSONResponse({"error": f"Failed to process image: {str(e)}"}, status_code=500)
+
+
+
 
 # Run with: uvicorn app:app --reload

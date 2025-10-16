@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 Write-Host "=== legal-atlas setup ===" -ForegroundColor Green
 Write-Host "Setting up local virtual environment" -ForegroundColor Yellow
 
+
 # Check if Python is available
 try {
     $pythonVersion = python --version 2>&1

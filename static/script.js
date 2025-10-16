@@ -1,7 +1,6 @@
 const form = document.getElementById('form');
 const fileInput = document.getElementById('fileInput');
 const fileLabel = document.getElementById('fileLabel');
-const fileMeta = document.getElementById('fileMeta');
 const runBtn = document.getElementById('runBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const copyBtn = document.getElementById('copyBtn');
@@ -125,7 +124,6 @@ copyBtn.addEventListener('click', async () => {
 clearBtn.addEventListener('click', () => {
   fileInput.value = '';
   fileLabel.textContent = 'Drop or Click to upload PDFs or Images';
-  fileMeta.textContent = '';
   document.getElementById('fileType').textContent = '';
   pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
   output.value = '';
@@ -225,7 +223,6 @@ function onFileChange() {
   const f = fileInput.files?.[0];
   if (!f) { 
     fileLabel.textContent = 'Drop or Click to upload PDFs or Images'; 
-    fileMeta.textContent = ''; 
     pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
     document.getElementById('fileType').textContent = '';
     selectedFile.textContent = '';
@@ -343,4 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById(targetTab).classList.add('active');
     });
   });
+
 });
+
+
