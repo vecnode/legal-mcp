@@ -15,10 +15,7 @@ fastapi
 uvicorn[standard]
 python-multipart
 pypdf
-easyocr
-Pillow
 requests
-beautifulsoup4
-lxml
 openai
+python-dotenv
 ```
