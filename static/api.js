@@ -98,12 +98,6 @@ class FileUtils {
     const fileName = file.name.toLowerCase();
     return file.type === 'application/pdf' || fileName.endsWith('.pdf');
   }
-
-  static isImageFile(file) {
-    const fileName = file.name.toLowerCase();
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
-    return imageExtensions.some(ext => fileName.endsWith(`.${ext}`));
-  }
 }
 
 // UI Helper functions

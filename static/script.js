@@ -88,16 +88,14 @@ drop.addEventListener('drop', (e) => {
     const file = e.dataTransfer.files[0];
     console.log('Processing file:', file.name, file.type);
     
-    // Check if it's a PDF or image
     const fileName = file.name.toLowerCase();
     const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
-    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].some(ext => fileName.endsWith(`.${ext}`));
-    
-    if (isPdf || isImage) {
+
+    if (isPdf) {
       fileInput.files = e.dataTransfer.files;
       onFileChange();
     } else {
-      alert('Please drop a PDF or image file (PNG, JPG, JPEG).');
+      alert('Please drop a PDF file.');
     }
   }
 });
@@ -123,7 +121,7 @@ copyBtn.addEventListener('click', async () => {
 // Clear button functionality
 clearBtn.addEventListener('click', () => {
   fileInput.value = '';
-  fileLabel.textContent = 'Drop or Click to upload PDFs or Images';
+  fileLabel.textContent = 'Drop or click to upload a PDF';
   document.getElementById('fileType').textContent = '';
   pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
   UIHelpers.clearElements(output);
@@ -138,7 +136,7 @@ clearBtn.addEventListener('click', () => {
 function onFileChange() {
   const f = fileInput.files?.[0];
   if (!f) { 
-    fileLabel.textContent = 'Drop or Click to upload PDFs or Images'; 
+    fileLabel.textContent = 'Drop or click to upload a PDF'; 
     pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
     document.getElementById('fileType').textContent = '';
     selectedFile.textContent = '';
@@ -154,53 +152,43 @@ function onFileChange() {
   // Simple console log
   console.log('File uploaded:', fileName, 'Type:', fileExtension);
   
-  // Determine file type
-  let fileType = 'UNKNOWN';
-  let isImage = false;
-  if (fileExtension === 'pdf') {
-    fileType = 'PDF';
-  } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension)) {
-    fileType = fileExtension.toUpperCase();
-    isImage = true;
+  if (fileExtension !== 'pdf' && f.type !== 'application/pdf') {
+    fileLabel.textContent = 'Drop or click to upload a PDF';
+    pdfPreview.innerHTML = '<p class="muted">File Preview</p>';
+    selectedFile.textContent = '';
+    fileSize.textContent = '';
+    UIHelpers.disableButtons(runBtn);
+    alert('Only PDF files are supported.');
+    fileInput.value = '';
+    return;
   }
-  
-  // Update UI
-  fileLabel.textContent = 'Selected File';
+
+  const fileType = 'PDF';
+  fileLabel.textContent = 'Selected file';
   const mb = FileUtils.formatFileSize(f.size);
   selectedFile.textContent = fileName;
   fileSize.textContent = `${fileType} (${mb} MB)`;
-  
-  // Enable run button
+
   UIHelpers.enableButtons(runBtn);
-  
-  // Create preview based on file type
+
   const fileURL = URL.createObjectURL(f);
-  
-  if (fileExtension === 'pdf') {
-    pdfPreview.innerHTML = `
-      <embed src="${fileURL}" type="application/pdf" width="100%" height="100%">
-    `;
-  } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension)) {
-    pdfPreview.innerHTML = `
-      <img src="${fileURL}" alt="Image preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-    `;
-  } else {
-    pdfPreview.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted);">
-        <p>Preview not available for .${fileExtension} files</p>
-      </div>
-    `;
-  }
+  pdfPreview.innerHTML = `
+    <embed src="${fileURL}" type="application/pdf" width="100%" height="100%">
+  `;
 }
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = fileInput.files?.[0];
   if (!f) { alert('Choose a PDF first.'); return; }
+  if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+    alert('Only PDF files are supported.');
+    return;
+  }
 
   UIHelpers.disableButtons(runBtn, downloadBtn);
   UIHelpers.clearElements(output);
-  UIHelpers.setStatus(statusEl, 'Processing PDF');
+  UIHelpers.setStatus(statusEl, 'Extracting text from PDF…');
 
   try {
     const data = await api.extractTextFromPDF(f);
@@ -213,8 +201,8 @@ form.addEventListener('submit', async (e) => {
     // Enable download functionality
     UIHelpers.enableButtons(downloadBtn, copyBtn);
     downloadBtn.onclick = () => {
-      const filename = (f.name.replace(/\.pdf$/i, '') || 'output') + '.txt';
-      FileUtils.createDownloadBlob(data.full_text || '', filename);
+      const base = f.name.replace(/\.[^/.]+$/, '') || 'output';
+      FileUtils.createDownloadBlob(data.full_text || '', `${base}.txt`);
     };
   } catch (err) {
     console.error(err);

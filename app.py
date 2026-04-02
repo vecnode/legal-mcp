@@ -110,6 +110,10 @@ def pdf_bytes_to_text(pdf_bytes: bytes) -> Tuple[List[dict], str]:
     return pages, full_text
 
 
+def _is_pdf_magic(data: bytes) -> bool:
+    return len(data) >= 4 and data[:4] == b"%PDF"
+
+
 @app.get("/", response_class=HTMLResponse)
 def root():
     with open("static/index.html", "r", encoding="utf-8") as f:
@@ -137,14 +141,17 @@ def health():
 
 @app.post("/api/extract-text")
 async def extract_text(file: UploadFile = File(...)):
-    """Extract text from PDF using pypdf only (no LLM)."""
-    if file.content_type not in ("application/pdf", "application/octet-stream"):
+    """Extract text from PDF using pypdf."""
+    raw = await file.read()
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+
+    is_pdf = ct == "application/pdf" or (ct == "application/octet-stream" and _is_pdf_magic(raw))
+
+    if not is_pdf:
         return JSONResponse({"error": "Please upload a PDF file."}, status_code=400)
 
-    pdf_bytes = await file.read()
-
     try:
-        pages, full_text = pdf_bytes_to_text(pdf_bytes)
+        pages, full_text = pdf_bytes_to_text(raw)
     except Exception as e:
         return JSONResponse({"error": f"Failed to process PDF: {e}"}, status_code=500)
 
