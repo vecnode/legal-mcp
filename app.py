@@ -1,6 +1,7 @@
 import io
 import os
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -33,20 +34,33 @@ def _ollama_model() -> str:
     return os.getenv("OLLAMA_MODEL", "glm-4.7-flash:latest")
 
 
-def process_with_ollama(text: str, task: str = "analyze", language: str = "english") -> str:
-    """Process text via Ollama POST /api/chat."""
-    base = _ollama_base()
-    model = _ollama_model()
-    url = f"{base}/api/chat"
+def _normalize_ollama_base(url: str) -> Optional[str]:
+    """Return stripped base URL or None if invalid."""
+    raw = (url or "").strip().rstrip("/")
+    if not raw:
+        return None
+    if len(raw) > 256:
+        return None
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    return raw
 
-    if task == "analyze":
-        prompt = f"Please analyze the following text and provide insights:\n\n{text}"
-    elif task == "summarize":
-        prompt = f"Please summarize the following text (maximum 220 words):\n\n{text}"
-    elif task == "extract_key_points":
-        prompt = f"Please extract the key points from the following text (max 10 key points):\n\n{text}"
-    else:
-        prompt = f"Please process the following text:\n\n{text}"
+
+def summarize_with_ollama(
+    text: str,
+    language: str = "english",
+    base: Optional[str] = None,
+    model: Optional[str] = None,
+) -> str:
+    """Summarise text via Ollama POST /api/chat."""
+    resolved_base = _normalize_ollama_base(base) if base else None
+    if not resolved_base:
+        resolved_base = _ollama_base()
+    resolved_model = (model or "").strip() or _ollama_model()
+    url = f"{resolved_base}/api/chat"
+
+    prompt = f"Please summarize the following text (maximum 220 words):\n\n{text}"
 
     if language == "portuguese":
         prompt += "\n\nAnswer only using Portuguese words."
@@ -54,19 +68,21 @@ def process_with_ollama(text: str, task: str = "analyze", language: str = "engli
         prompt += "\n\nAnswer only using English words."
 
     system = (
-        "You are a helpful Law assistant that processes, analyzes and summarizes text documents. "
-        "You are very experienced and will help users understand and generate legal documents for "
-        "Portugal, UK and Europe Law. Be concise in the answers you provide and not very long, no emojis."
+        "You are a helpful Law assistant that summarizes text documents clearly. "
+        "You help users understand legal material for Portugal, UK and Europe. "
+        "Be concise; no emojis. Reply with the summary only—no long step-by-step reasoning "
+        "instead of the summary."
     )
 
     payload = {
-        "model": model,
+        "model": resolved_model,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ],
         "stream": False,
-        "options": {"temperature": 0.3, "num_predict": 1000},
+        # num_predict: max new tokens (reasoning models often need >1000 before `content` is filled).
+        "options": {"temperature": 0.3, "num_predict": 8192},
     }
 
     try:
@@ -75,7 +91,7 @@ def process_with_ollama(text: str, task: str = "analyze", language: str = "engli
         data = r.json()
     except requests.exceptions.ConnectionError as e:
         return (
-            f"Error: cannot reach Ollama at {base}. Is it running? ({e})"
+            f"Error: cannot reach Ollama at {resolved_base}. Is it running? ({e})"
         )
     except requests.exceptions.HTTPError as e:
         body = ""
@@ -88,10 +104,27 @@ def process_with_ollama(text: str, task: str = "analyze", language: str = "engli
         return f"Error calling Ollama: {e}"
 
     message = data.get("message") or {}
-    content = message.get("content")
-    if not content:
-        return f"Error: unexpected Ollama response: {data!r}"
-    return content
+    if not isinstance(message, dict):
+        message = {}
+
+    def _msg_text(key: str) -> str:
+        val = message.get(key)
+        return (val if isinstance(val, str) else "").strip()
+
+    content = _msg_text("content")
+    if content:
+        return content
+
+    thinking = _msg_text("thinking")
+    if thinking:
+        return thinking
+
+    done = data.get("done_reason")
+    return (
+        "Error: Ollama returned an empty reply. "
+        f"If this is a reasoning model, try increasing context/output in Ollama or switch models. "
+        f"(done_reason={done!r})"
+    )
 
 
 def pdf_bytes_to_text(pdf_bytes: bytes) -> Tuple[List[dict], str]:
@@ -121,21 +154,46 @@ def root():
 
 
 @app.get("/api/health")
-def health():
-    base = _ollama_base()
+def health(base: Optional[str] = None):
+    resolved = _normalize_ollama_base(base) if base else None
+    if not resolved:
+        resolved = _ollama_base()
     try:
-        r = requests.get(f"{base}/api/tags", timeout=2)
+        r = requests.get(f"{resolved}/api/tags", timeout=2)
         r.raise_for_status()
-        return {"status": "ok", "ollama": "ready", "host": base, "model": _ollama_model()}
+        return {"status": "ok", "ollama": "ready", "host": resolved, "model": _ollama_model()}
     except requests.exceptions.RequestException as e:
         return JSONResponse(
             {
                 "status": "error",
                 "ollama": "unreachable",
-                "host": base,
+                "host": resolved,
                 "detail": str(e),
             },
             status_code=503,
+        )
+
+
+@app.get("/api/ollama/models")
+def ollama_models(base: Optional[str] = None):
+    """Proxy Ollama GET /api/tags so the browser avoids CORS issues."""
+    resolved = _normalize_ollama_base(base) if base else None
+    if not resolved:
+        resolved = _ollama_base()
+    try:
+        r = requests.get(f"{resolved}/api/tags", timeout=8)
+        r.raise_for_status()
+        data = r.json()
+        models = sorted(
+            m["name"]
+            for m in (data.get("models") or [])
+            if isinstance(m, dict) and m.get("name")
+        )
+        return {"host": resolved, "models": models}
+    except requests.exceptions.RequestException as e:
+        return JSONResponse(
+            {"error": str(e), "host": resolved, "models": []},
+            status_code=502,
         )
 
 
@@ -165,18 +223,23 @@ async def extract_text(file: UploadFile = File(...)):
 @app.post("/api/process-text")
 async def process_text(
     text: str = Form(...),
-    task: str = Form("analyze"),
     language: str = Form("english"),
+    ollama_base: Optional[str] = Form(None),
+    ollama_model: Optional[str] = Form(None),
 ):
-    """Process text using Ollama."""
-    processed_text = process_with_ollama(text, task, language)
+    """Summarise text using Ollama."""
+    processed_text = summarize_with_ollama(
+        text,
+        language,
+        base=ollama_base,
+        model=ollama_model,
+    )
     if processed_text.startswith("Error:"):
         return JSONResponse({"error": processed_text}, status_code=502)
 
     return {
         "original_text": text,
         "processed_text": processed_text,
-        "task": task,
         "language": language,
     }
 

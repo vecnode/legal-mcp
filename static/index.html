@@ -16,134 +16,159 @@
   <main>
     <div class="main-container">
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="text-extractor">PDF-to-Text Extractor</button>
-        <button class="tab-btn" data-tab="legal-generator">Legal Document Generator</button>
+        <button type="button" class="tab-btn active" data-tab="about">About</button>
+        <button type="button" class="tab-btn" data-tab="tools">Tools</button>
+        <button type="button" class="tab-btn" data-tab="settings">Settings</button>
       </div>
-      
-      <div class="tab-content active" id="text-extractor">
-        
+
+      <div id="about" class="tab-content about-tab active">
         <section class="card glossary-card">
-          <label>Extract text from PDF files.<br> 
+          <h2 class="about-heading">About</h2>
+          <p>Legal-MCP is a framework for interacting with legal documents</p>
         </section>
-
         <section class="card">
-          File Upload
-
-          <form id="form">  
-            <div class="drop-area" id="drop">
-              <input id="fileInput" type="file" accept="application/pdf,.pdf" />
-              <div id="fileLabel">Drop or click to upload a PDF</div>
-              <div id="fileMeta"></div>
-              <div id="fileType" class="file-type"></div>
-            </div>
-
-             <div>
-               <label>Selected File</label>
-               <div id="selectedFile" class="file-info"></div>
-               <br>
-             </div>
-
-             <div>
-               <label>File Type</label>
-               <br>
-               <div id="fileSize" class="file-info"></div>
-             </div>
-
-            <div class="row">
-              <button class="btn" id="runBtn" type="submit">Extract text</button>
-              <button class="btn" id="clearBtn" type="button">Clear Files</button>
-
-            </div>
-
-            
-            <div class="space"></div>
-            <div class="muted" id="status"></div>
-          </form>
-
+          <h3 class="about-subheading">What you can do</h3>
+          <ul class="about-list">
+            <li><strong>PDF-to-Text Extractor</strong> - upload a PDF and copy or download the extracted text.</li>
+            <li><strong>Text Summariser</strong> - paste text and get a concise summary (English).</li>
+          </ul>
+          <p class="about-hint">Switch to the <strong>Tools</strong> tab.</p>
         </section>
-
-        <section class="card">
-          Document Visualiser
-          <div id="pdfPreview" class="pdf-preview">
-            <p class="muted">File Preview</p>
-          </div>
-        </section>
-
-        <section class="card results-card">
-          Extraction Results 
-          <br>
-          <div class="row">
-            <button class="btn" id="downloadBtn" type="button" disabled>Download .txt</button>
-            <button class="btn" id="copyBtn" type="button" disabled>Copy text</button>
-          </div>
-          <br>
-          <textarea id="output" class="results" readonly></textarea>
-        </section>
-      
-       
       </div>
 
-      
-      <div class="tab-content" id="legal-generator">
-        
-        <section class="card glossary-card">
-          About
-          <br><br>
-          <label>This page allows you to process text using AI.<br> 
-            You can analyze, summarize, or extract key points from any text using a local model via Ollama.</label>
-        </section>
+      <div id="tools" class="tab-content tools-tab">
+        <div class="accordion-item">
+          <button type="button" class="accordion-trigger" id="accordion-pdf" aria-expanded="false" aria-controls="panel-pdf">
+            <span class="accordion-title">PDF-to-Text Extractor</span>
+            <span class="accordion-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="accordion-panel" id="panel-pdf" role="region" aria-labelledby="accordion-pdf" hidden>
+            <div class="tool-page-grid accordion-tool-inner">
+              <section class="card glossary-card">
+                <label>Extract text from PDF files.</label>
+              </section>
+              <section class="card">
+                File Upload
+                <form id="form" class="pdf-form">
+                  <div class="drop-area">
+                    <input id="fileInput" type="file" accept="application/pdf,.pdf" />
+                    <div id="fileLabel" class="upload-label">Drop or click to upload a PDF</div>
+                    <div id="fileType" class="file-type"></div>
+                  </div>
+                  <div>
+                    <label>Selected File</label>
+                    <div id="selectedFile" class="file-info"></div>
+                    <br>
+                  </div>
+                  <div>
+                    <label>File Type</label>
+                    <br>
+                    <div id="fileSize" class="file-info"></div>
+                  </div>
+                  <div class="row">
+                    <button class="btn" id="runBtn" type="submit">Extract text</button>
+                    <button class="btn" id="clearBtn" type="button">Clear Files</button>
+                  </div>
+                  <div class="space"></div>
+                  <div class="muted process-status" id="status"></div>
+                </form>
+              </section>
+              <section class="card">
+                Document Visualiser
+                <div id="pdfPreview" class="pdf-preview">
+                  <p class="muted">File Preview</p>
+                </div>
+              </section>
+              <section class="card results-card">
+                Extraction Results
+                <br>
+                <div class="row">
+                  <button class="btn" id="downloadBtn" type="button" disabled>Download .txt</button>
+                  <button class="btn" id="copyBtn" type="button" disabled>Copy text</button>
+                </div>
+                <br>
+                <textarea id="output" class="results" readonly></textarea>
+              </section>
+            </div>
+          </div>
+        </div>
 
-        <section class="card">
-          Text Processing
-          <br>
-          <textarea id="inputText" class="input-text" placeholder="Paste your text here"></textarea>
-          
-          <div class="row">
-            Processing Task:
-            <select id="taskSelect">
-              <option value="analyze">Analyze</option>
-              <option value="summarize">Summarize</option>
-              <option value="extract_key_points">Extract Key Points</option>
-            </select>
-          </div>
-          
-          <div class="row">
-            Language:
-            <select id="languageSelect">
-              <option value="english">English</option>
-              <option value="portuguese">Portuguese (PT)</option>
-            </select>
-          </div>
-          
-          <div class="row">
-            <button class="btn" id="processBtn" type="button">Process with AI</button>
-            <button class="btn" id="clearTextBtn" type="button">Clear Text</button>
-          </div>
-          
-          <div class="space"></div>
-          <div class="muted" id="processStatus"></div>
-        </section>
+        <div class="accordion-item">
+          <button type="button" class="accordion-trigger" id="accordion-legal" aria-expanded="false" aria-controls="panel-legal">
+            <span class="accordion-title">Text Summariser</span>
+            <span class="accordion-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="accordion-panel" id="panel-legal" role="region" aria-labelledby="accordion-legal" hidden>
+            <div class="tool-page-grid accordion-tool-inner">
+              <section class="card glossary-card">
+                <label>Paste text below to get a concise summary (English)</label>
+                <p class="muted global-ollama-hint" id="globalOllamaHint" aria-live="polite"></p>
+              </section>
+              <section class="card">
+                Summarise
+                <br>
+                <textarea id="inputText" class="input-text" placeholder="Paste text to summarise"></textarea>
 
-        <section class="card results-card">
-          AI Results
-          <br>
-          <div class="row">
-            <button class="btn" id="downloadProcessedBtn" type="button" disabled>Download .txt</button>
-            <button class="btn" id="copyProcessedBtn" type="button" disabled>Copy text</button>
+                <div class="row">
+                  <button class="btn" id="processBtn" type="button">Summarise</button>
+                  <button class="btn" id="clearTextBtn" type="button">Clear</button>
+                </div>
+                <div class="space"></div>
+                <div class="muted process-status" id="processStatus"></div>
+              </section>
+              <section class="card results-card">
+                Summary
+                <br>
+                <div class="row">
+                  <button class="btn" id="downloadProcessedBtn" type="button" disabled>Download .txt</button>
+                  <button class="btn" id="copyProcessedBtn" type="button" disabled>Copy</button>
+                </div>
+                <br>
+                <textarea id="processedOutput" class="results" readonly></textarea>
+              </section>
+            </div>
           </div>
-          <br>
-          <textarea id="processedOutput" class="results" readonly></textarea>
-        </section>
-        
+        </div>
       </div>
 
+      <div id="settings" class="tab-content settings-tab">
+        <div class="accordion-item">
+          <button type="button" class="accordion-trigger" id="accordion-ollama" aria-expanded="false" aria-controls="panel-ollama">
+            <span class="accordion-title">Ollama</span>
+            <span class="accordion-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="accordion-panel" id="panel-ollama" role="region" aria-labelledby="accordion-ollama" hidden>
+            <div class="settings-ollama">
+              <p class="muted settings-global-note">Host, port, and model here apply to every summariser request in <strong>Tools</strong> (Text Summariser).</p>
+              <div class="row settings-ip-port">
+                <div>
+                  <label for="ollamaIpInput">Host / IP</label>
+                  <input type="text" id="ollamaIpInput" class="settings-input" placeholder="127.0.0.1" autocomplete="off" />
+                </div>
+                <div>
+                  <label for="ollamaPortInput">Port</label>
+                  <input type="text" id="ollamaPortInput" class="settings-input" placeholder="11434" inputmode="numeric" autocomplete="off" />
+                </div>
+              </div>
+              <p class="muted settings-hint" id="ollamaBasePreview">Base URL: http://127.0.0.1:11434</p>
+              <div class="settings-model-block">
+                <div class="settings-model-header">
+                  <label for="ollamaModelSelect">Available models</label>
+                  <button type="button" class="btn btn-inline" id="ollamaRefreshBtn" title="Refresh model list from Ollama">Refresh</button>
+                </div>
+                <select id="ollamaModelSelect" class="settings-model-select">
+                  <option value="">— Click Refresh to load —</option>
+                </select>
+              </div>
+              <div class="muted process-status" id="ollamaSettingsStatus"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
-
-  
 
   <script src="/static/api.js"></script>
   <script src="/static/script.js"></script>
 </body>
 </html>
-

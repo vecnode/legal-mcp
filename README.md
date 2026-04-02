@@ -1,6 +1,6 @@
 # legal-mcp
 
-A Legal-MCP framework.
+A Legal-MCP framework (ongoing).
 
 ### Reproduce
 

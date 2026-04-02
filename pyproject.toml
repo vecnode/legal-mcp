@@ -1,7 +1,7 @@
 [project]
 name = "legal-mcp"
 version = "0.1.0"
-description = "A Legal-MCP framework."
+description = "Legal-MCP framework"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

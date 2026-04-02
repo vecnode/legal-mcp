@@ -1,9 +1,37 @@
 // API functions for legal-mcp
 // Handles API requests and Ollama-backed text processing (via backend)
 
+const OLLAMA_IP_KEY = 'legalMcp.ollamaIp';
+const OLLAMA_PORT_KEY = 'legalMcp.ollamaPort';
+const OLLAMA_MODEL_KEY = 'legalMcp.ollamaModel';
+
 class LegalMcpAPI {
   constructor() {
     this.baseURL = '';
+  }
+
+  /** @returns {{ ip: string, port: string, baseUrl: string, model: string }} */
+  getOllamaConfig() {
+    const ip = localStorage.getItem(OLLAMA_IP_KEY) || '127.0.0.1';
+    const port = localStorage.getItem(OLLAMA_PORT_KEY) || '11434';
+    const model = (localStorage.getItem(OLLAMA_MODEL_KEY) || '').trim();
+    return {
+      ip,
+      port,
+      baseUrl: `http://${ip}:${port}`,
+      model,
+    };
+  }
+
+  async fetchOllamaModels() {
+    const { baseUrl } = this.getOllamaConfig();
+    const url = `/api/ollama/models?base=${encodeURIComponent(baseUrl)}`;
+    const response = await fetch(url);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `Could not list models (${response.status})`);
+    }
+    return data;
   }
 
   // Extract text from PDF using pypdf only
@@ -24,12 +52,14 @@ class LegalMcpAPI {
     return await response.json();
   }
 
-  // Process text via backend (Ollama)
-  async processTextWithAI(text, task = 'analyze', language = 'english') {
+  // Summarise text via backend (Ollama); host/model always read from Settings (localStorage).
+  async summarizeText(text, language = 'english') {
     const formData = new FormData();
     formData.append('text', text);
-    formData.append('task', task);
     formData.append('language', language);
+    const { baseUrl, model } = this.getOllamaConfig();
+    formData.append('ollama_base', baseUrl);
+    formData.append('ollama_model', model);
 
     const response = await fetch('/api/process-text', {
       method: 'POST',
@@ -146,7 +176,11 @@ class UIHelpers {
   }
 }
 
-// Export for use in other files
 window.LegalMcpAPI = LegalMcpAPI;
 window.FileUtils = FileUtils;
 window.UIHelpers = UIHelpers;
+window.LEGAL_MCP_OLLAMA_KEYS = {
+  ip: OLLAMA_IP_KEY,
+  port: OLLAMA_PORT_KEY,
+  model: OLLAMA_MODEL_KEY,
+};
