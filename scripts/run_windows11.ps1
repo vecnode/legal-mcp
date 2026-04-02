@@ -5,69 +5,33 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "=== legal-atlas setup ===" -ForegroundColor Green
-Write-Host "Setting up local virtual environment" -ForegroundColor Yellow
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $ProjectRoot
 
+Write-Host "Syncing uv project (project root: $ProjectRoot)" -ForegroundColor Yellow
 
-# Check if Python is available
+# Check if uv is available
 try {
-    $pythonVersion = python --version 2>&1
-    Write-Host "Python version: $pythonVersion" -ForegroundColor Cyan
+    $uvVersion = uv --version 2>&1
+    Write-Host "uv version: $uvVersion" -ForegroundColor Cyan
 } catch {
-    Write-Error "Python is not installed or not in PATH. Please install Python 3.10+ first."
+    Write-Error "uv is not installed or not in PATH. See https://docs.astral.sh/uv/getting-started/installation/"
     exit 1
 }
 
-# Create virtual environment if it doesn't exist
-if (-not (Test-Path .venv)) {
-    Write-Host "Creating virtual environment" -ForegroundColor Yellow
-    python -m venv .venv
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to create virtual environment"
-        exit 1
-    }
-} else {
-    Write-Host "Virtual environment already exists" -ForegroundColor Green
+Write-Host "Running uv sync" -ForegroundColor Yellow
+uv sync
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "uv sync failed"
+    exit 1
 }
-
-# Activate virtual environment
-$venvActivate = Join-Path (Resolve-Path .venv) 'Scripts\Activate.ps1'
-Write-Host "Activating virtual environment" -ForegroundColor Yellow
-. $venvActivate
-
-# Check if requirements are already installed
-if (Test-Path requirements.txt) {
-    # Check if key packages are already installed
-    try {
-        # Check if packages are installed without showing warnings
-        $fastapiInstalled = pip show fastapi --disable-pip-version-check 2>$null
-        $uvicornInstalled = pip show uvicorn --disable-pip-version-check 2>$null
-        $pypdfInstalled = pip show pypdf --disable-pip-version-check 2>$null
-        $openaiInstalled = pip show openai --disable-pip-version-check 2>$null
-        
-        if ($fastapiInstalled -and $uvicornInstalled -and $pypdfInstalled -and $openaiInstalled) {
-            Write-Host "Project requirements already installed, skipping" -ForegroundColor Green
-        } else {
-            throw "Requirements not found"
-        }
-    } catch {
-        Write-Host "Installing missing project requirements" -ForegroundColor Yellow
-        pip install -r requirements.txt
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Some requirements may not have installed properly, continuing"
-        } else {
-            Write-Host "Requirements installed successfully" -ForegroundColor Green
-        }
-    }
-} else {
-    Write-Warning "requirements.txt not found, skipping dependency installation"
-}
+Write-Host "Environment ready" -ForegroundColor Green
 
 # Set environment variables
 $env:UVICORN_WORKERS = '1'
 $env:PYTHONUNBUFFERED = '1'
 
-Write-Host "=== Starting legal-atlas server ===" -ForegroundColor Green
+Write-Host "=== Starting legal-mcp server ===" -ForegroundColor Green
 
 # Always use port 8000 - kill any existing process on this port
 $port = 8000
@@ -134,7 +98,7 @@ if (-not $SkipBrowser) {
 
 # Start server directly - this will show all output in this window
 try {
-    uvicorn app:app --host 127.0.0.1 --port $port --reload
+    uv run uvicorn app:app --host 127.0.0.1 --port $port --reload
 } catch {
     Write-Error "Failed to start server: $_"
     exit 1

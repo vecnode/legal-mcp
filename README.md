@@ -1,21 +1,16 @@
-# legal-atlas
+# legal-mcp
 
-AI-assisted platform to understand and create legal documents.
+A Legal-MCP framework.
 
+### Reproduce
 
-### Dependencies:  
+```sh
+uv sync
+uv run uvicorn app:app --host 127.0.0.1 --port 8080 --reload
 ```
-Python 3.11+ (e.g. version 3.13.7)   
-```
 
+### Libraries
 
-### Libraries:  
-```
-fastapi
-uvicorn[standard]
-python-multipart
-pypdf
-requests
-openai
-python-dotenv
-```
+- Dependencies are listed in `pyproject.toml` (`[project].dependencies`). 
+- After cloning, `uv sync` installs exactly what `uv.lock` pins.
+

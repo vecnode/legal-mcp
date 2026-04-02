@@ -1,24 +1,25 @@
-async def get_chatmodels():
-    from openai import AsyncOpenAI as ModelClient
-    client = ModelClient()  # uses environment variable API key
-    starts_with = ["gpt", "ft:gpt", "o"]
-    blacklist = ["instruct", "omni", "realtime", "audio", "search"]
-    model_response = await client.models.list()
-    model_dict = model_response.model_dump().get('data', [])
-    model_list = sorted([model['id'] for model in model_dict])
-    filtered_models = [
-        model for model in model_list
-        if any(model.startswith(prefix) for prefix in starts_with)
-        and not any(bl_item in model for bl_item in blacklist)
-    ]    
-    return filtered_models
+import os
 
-async def main():
+import requests
+
+
+def list_ollama_models():
+    base = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+    url = f"{base}/api/tags"
+    r = requests.get(url, timeout=10)
+    r.raise_for_status()
+    data = r.json()
+    models = data.get("models") or []
+    return sorted(m.get("name", "") for m in models if m.get("name"))
+
+
+def main():
     try:
-        chat_model_list = await get_chatmodels()
-        print("--------\n" + "\n".join(chat_model_list))
+        names = list_ollama_models()
+        print("--------\n" + ("\n".join(names) if names else "(no models)"))
     except Exception as err:
         print("An error occurred:", err)
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

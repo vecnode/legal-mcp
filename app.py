@@ -1,27 +1,19 @@
 import io
 import os
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Tuple
 
+import requests
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-
 from pypdf import PdfReader
-import openai
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
+app = FastAPI(title="legal-mcp", version="1.0")
 
-
-
-
-app = FastAPI(title="legal-atlas", version="1.0")
-
-# CORS for local dev; tighten in production
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,60 +22,80 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve the static front-end
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+def _ollama_base() -> str:
+    return os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
 
 
+def _ollama_model() -> str:
+    return os.getenv("OLLAMA_MODEL", "glm-4.7-flash:latest")
 
-def process_with_openai(text: str, task: str = "analyze", language: str = "english") -> str:
-    """
-    Process text using OpenAI API
-    """
+
+def process_with_ollama(text: str, task: str = "analyze", language: str = "english") -> str:
+    """Process text via Ollama POST /api/chat."""
+    base = _ollama_base()
+    model = _ollama_model()
+    url = f"{base}/api/chat"
+
+    if task == "analyze":
+        prompt = f"Please analyze the following text and provide insights:\n\n{text}"
+    elif task == "summarize":
+        prompt = f"Please summarize the following text (maximum 220 words):\n\n{text}"
+    elif task == "extract_key_points":
+        prompt = f"Please extract the key points from the following text (max 10 key points):\n\n{text}"
+    else:
+        prompt = f"Please process the following text:\n\n{text}"
+
+    if language == "portuguese":
+        prompt += "\n\nAnswer only using Portuguese words."
+    else:
+        prompt += "\n\nAnswer only using English words."
+
+    system = (
+        "You are a helpful Law assistant that processes, analyzes and summarizes text documents. "
+        "You are very experienced and will help users understand and generate legal documents for "
+        "Portugal, UK and Europe Law. Be concise in the answers you provide and not very long, no emojis."
+    )
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        "stream": False,
+        "options": {"temperature": 0.3, "num_predict": 1000},
+    }
+
     try:
-        # Get OpenAI API key from environment variables
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            return "Error: OPENAI_API_KEY not found in environment variables. Please set it in your .env file."
-        
-        client = openai.OpenAI(api_key=api_key)
-        
-        if task == "analyze":
-            prompt = f"Please analyze the following text and provide insights:\n\n{text}"
-        elif task == "summarize":
-            prompt = f"Please summarize the following text (maximum 220 words):\n\n{text}"
-        elif task == "extract_key_points":
-            prompt = f"Please extract the key points from the following text (max 10 key points):\n\n{text}"
-        else:
-            prompt = f"Please process the following text:\n\n{text}"
-        
-        # Add language instruction to the prompt
-        if language == "portuguese":
-            prompt += "\n\nAnswer only using Portuguese words."
-        else:
-            prompt += "\n\nAnswer only using English words."
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful Law assistant that processes, analyzes and summarizest text documents. You are very experienced and will help users understand and generate legal documents for Portugal, UK and Europe Law. Be concise in the answers you provide and not very long, no emojis."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1000,
-            temperature=0.3
+        r = requests.post(url, json=payload, timeout=300)
+        r.raise_for_status()
+        data = r.json()
+    except requests.exceptions.ConnectionError as e:
+        return (
+            f"Error: cannot reach Ollama at {base}. Is it running? ({e})"
         )
-        
-        return response.choices[0].message.content
-        
-    except Exception as e:
-        return f"Error processing with OpenAI: {str(e)}"
+    except requests.exceptions.HTTPError as e:
+        body = ""
+        try:
+            body = e.response.text[:500] if e.response is not None else ""
+        except Exception:
+            pass
+        return f"Error from Ollama ({e.response.status_code if e.response else '?'}): {body or e}"
+    except requests.exceptions.RequestException as e:
+        return f"Error calling Ollama: {e}"
+
+    message = data.get("message") or {}
+    content = message.get("content")
+    if not content:
+        return f"Error: unexpected Ollama response: {data!r}"
+    return content
 
 
-def pdf_bytes_to_text(pdf_bytes: bytes):
-    """
-    Extract text from PDF bytes using pypdf
-    """
+def pdf_bytes_to_text(pdf_bytes: bytes) -> Tuple[List[dict], str]:
+    """Extract text from PDF bytes using pypdf."""
     pages: List[dict] = []
     reader = PdfReader(io.BytesIO(pdf_bytes))
 
@@ -98,24 +110,34 @@ def pdf_bytes_to_text(pdf_bytes: bytes):
     return pages, full_text
 
 
-
-
-
 @app.get("/", response_class=HTMLResponse)
 def root():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
+
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "openai": "ready"}
+    base = _ollama_base()
+    try:
+        r = requests.get(f"{base}/api/tags", timeout=2)
+        r.raise_for_status()
+        return {"status": "ok", "ollama": "ready", "host": base, "model": _ollama_model()}
+    except requests.exceptions.RequestException as e:
+        return JSONResponse(
+            {
+                "status": "error",
+                "ollama": "unreachable",
+                "host": base,
+                "detail": str(e),
+            },
+            status_code=503,
+        )
+
 
 @app.post("/api/extract-text")
 async def extract_text(file: UploadFile = File(...)):
-    """
-    Extract text from PDF using pypdf only (no OpenAI processing)
-    Used by the Text Extractor tab
-    """
+    """Extract text from PDF using pypdf only (no LLM)."""
     if file.content_type not in ("application/pdf", "application/octet-stream"):
         return JSONResponse({"error": "Please upload a PDF file."}, status_code=400)
 
@@ -127,38 +149,28 @@ async def extract_text(file: UploadFile = File(...)):
         return JSONResponse({"error": f"Failed to process PDF: {e}"}, status_code=500)
 
     return {
-        "num_pages": len(pages), 
-        "pages": pages, 
-        "full_text": full_text
+        "num_pages": len(pages),
+        "pages": pages,
+        "full_text": full_text,
     }
+
 
 @app.post("/api/process-text")
 async def process_text(
     text: str = Form(...),
     task: str = Form("analyze"),
-    language: str = Form("english")
+    language: str = Form("english"),
 ):
-    """
-    Process text using OpenAI API
-    Used by the Legal Document Generator tab
-    """
-    try:
-        processed_text = process_with_openai(text, task, language)
-    except Exception as e:
-        return JSONResponse({"error": f"Failed to process text: {e}"}, status_code=500)
+    """Process text using Ollama."""
+    processed_text = process_with_ollama(text, task, language)
+    if processed_text.startswith("Error:"):
+        return JSONResponse({"error": processed_text}, status_code=502)
 
     return {
         "original_text": text,
         "processed_text": processed_text,
         "task": task,
-        "language": language
+        "language": language,
     }
 
 
-
-
-
-
-
-
-# Run with: uvicorn app:app --reload

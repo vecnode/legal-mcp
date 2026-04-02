@@ -1,7 +1,7 @@
-// API functions for legal-atlas
-// Handles all API requests and OpenAI processing
+// API functions for legal-mcp
+// Handles API requests and Ollama-backed text processing (via backend)
 
-class LegalAtlasAPI {
+class LegalMcpAPI {
   constructor() {
     this.baseURL = '';
   }
@@ -24,7 +24,7 @@ class LegalAtlasAPI {
     return await response.json();
   }
 
-  // Process text using OpenAI API
+  // Process text via backend (Ollama)
   async processTextWithAI(text, task = 'analyze', language = 'english') {
     const formData = new FormData();
     formData.append('text', text);
@@ -153,6 +153,6 @@ class UIHelpers {
 }
 
 // Export for use in other files
-window.LegalAtlasAPI = LegalAtlasAPI;
+window.LegalMcpAPI = LegalMcpAPI;
 window.FileUtils = FileUtils;
 window.UIHelpers = UIHelpers;

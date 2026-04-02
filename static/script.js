@@ -1,5 +1,5 @@
 // Initialize API instance
-const api = new LegalAtlasAPI();
+const api = new LegalMcpAPI();
 
 // DOM elements
 const form = document.getElementById('form');
