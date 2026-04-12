@@ -1,9 +1,14 @@
 [project]
 name = "legal-mcp"
 version = "0.1.0"
-description = "Legal-MCP framework"
+description = "Professional Python MCP server for legal document analysis"
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+    { name = "vecnode", email = "contact@vecnode.dev" }
+]
+license = { text = "MIT" }
+keywords = ["mcp", "legal", "document-analysis", "llm"]
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -13,9 +18,28 @@ dependencies = [
     "python-dotenv",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+    "pytest",
+    "pytest-asyncio",
+]
+
+[project.scripts]
+legal-mcp-server = "legal_mcp.server.main:main"
+
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["app"]
+packages = ["legal_mcp", "legal_mcp.server", "legal_mcp.tools", "legal_mcp.backends", "legal_mcp.domain"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
