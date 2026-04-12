@@ -4,8 +4,7 @@
 
 ### Prerequisites
 - Python 3.10 or higher
-- `uv` or `pip` for package management
-- `make` (optional, for convenience commands)
+- `uv` for package management
 
 ### Local Development
 
@@ -14,21 +13,19 @@
    git clone <repository>
    cd legal-mcp
    uv sync
-   source .venv/bin/activate  # or use uv run
    ```
 
-2. **Install in editable mode with dev dependencies**:
+2. **Run development commands with uv**:
    ```bash
-   make dev-install
-   # or manually:
-   pip install -e ".[dev]"
-   ```
-
-3. **Run tests**:
-   ```bash
-   make test
-   # or:
-   pytest tests/ -v
+   # Format code
+   uv run black legal_mcp tests
+   uv run ruff format legal_mcp tests
+   
+   # Lint
+   uv run ruff check legal_mcp tests
+   
+   # Run tests
+   uv run pytest tests/ -v
    ```
 
 ## Code Style
@@ -40,17 +37,13 @@ We follow PEP 8 with some conventions:
 
 ### Format your code:
 ```bash
-make format
-# or:
-black legal_mcp tests
-ruff format legal_mcp tests
+uv run black legal_mcp tests
+uv run ruff format legal_mcp tests
 ```
 
 ### Lint your code:
 ```bash
-make lint
-# or:
-ruff check legal_mcp tests
+uv run ruff check legal_mcp tests
 ```
 
 ## Package Structure
@@ -129,20 +122,20 @@ feat: add legal_research tool with Ollama integration
 Write tests for new features:
 ```bash
 # Run all tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_tools_my_tool.py -v
+uv run pytest tests/test_tools_my_tool.py -v
 
 # Run with coverage
-pytest tests/ --cov=legal_mcp
+uv run pytest tests/ --cov=legal_mcp
 ```
 
 ## Before Submitting a PR
 
-- [ ] Code is formatted (`make format`)
-- [ ] Code passes linters (`make lint`)
-- [ ] Tests pass (`make test`)
+- [ ] Code is formatted (`uv run black legal_mcp tests && uv run ruff format legal_mcp tests`)
+- [ ] Code passes linters (`uv run ruff check legal_mcp tests`)
+- [ ] Tests pass (`uv run pytest tests/ -v`)
 - [ ] New tests added for new functionality
 - [ ] Documentation updated if needed
 - [ ] No breaking changes to existing APIs (unless intentional)

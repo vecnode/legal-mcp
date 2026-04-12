@@ -86,32 +86,25 @@ async def handle_legal_research(args: dict) -> dict:
 
 ### Command-line execution:
 ```bash
-# Via console script (after pip install -e .)
+# Via console script (requires editable install)
 legal-mcp-server
 
-# Via module invocation
-python -m legal_mcp.server
+# Via module invocation with uv
+uv run python -m legal_mcp.server
 
-# Via uvicorn directly (during development)
+# Via uvicorn with uv (during development with hot reload)
 uv run uvicorn legal_mcp.server:app --host 127.0.0.1 --port 8080 --reload
 ```
 
 ## Development Workflow
 
-Local development commands (via Makefile):
+Local development commands with `uv`:
 ```bash
-make dev-install    # Install with dev dependencies
-make format         # Format code (black + ruff)
-make lint           # Run linters
-make test           # Run tests
-make clean          # Remove build artifacts
-```
-
-Or using `uv`:
-```bash
-uv sync             # Install exact dependencies from lock file
-uv run black legal_mcp tests
-uv run pytest tests/
+uv sync                                        # Install exact dependencies
+uv run black legal_mcp tests                   # Format code
+uv run ruff format legal_mcp tests             # Format imports
+uv run ruff check legal_mcp tests              # Lint
+uv run pytest tests/                           # Run tests
 ```
 
 ## Future Considerations

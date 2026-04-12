@@ -1,29 +1,31 @@
-.PHONY: help format lint test install dev-install clean
+.PHONY: help format lint test install clean
 
 help:
-	@echo "legal-mcp development commands:"
+	@echo "legal-mcp development commands (using uv):"
 	@echo "  make format       - Format code with black and ruff"
 	@echo "  make lint         - Run ruff linter"
 	@echo "  make test         - Run tests with pytest"
 	@echo "  make install      - Install package in editable mode"
-	@echo "  make dev-install  - Install package with dev dependencies"
 	@echo "  make clean        - Remove build artifacts"
+	@echo ""
+	@echo "Or use uv directly:"
+	@echo "  uv sync"
+	@echo "  uv run black legal_mcp tests"
+	@echo "  uv run ruff check legal_mcp tests"
+	@echo "  uv run pytest tests/"
 
 format:
-	black legal_mcp tests
-	ruff format legal_mcp tests
+	uv run black legal_mcp tests
+	uv run ruff format legal_mcp tests
 
 lint:
-	ruff check legal_mcp tests
+	uv run ruff check legal_mcp tests
 
 test:
-	pytest tests/ -v
+	uv run pytest tests/ -v
 
 install:
-	pip install -e .
-
-dev-install:
-	pip install -e ".[dev]"
+	uv sync
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
