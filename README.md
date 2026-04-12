@@ -1,13 +1,15 @@
 # legal-mcp
 
-A Legal-MCP framework (ongoing).
+A professional Python MCP server for legal document analysis.
 
-### Reproduce
+### Quick Start
 
 ```sh
 uv sync
-uv run uvicorn app:app --host 127.0.0.1 --port 8080 --reload
+uv run python -m legal_mcp.server
 ```
+
+Server runs at `http://127.0.0.1:8080`
 
 ### Libraries
 
