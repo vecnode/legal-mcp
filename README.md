@@ -78,5 +78,5 @@ uv run uvicorn legal_mcp.server:app --host 127.0.0.1 --port 8080 --reload
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Package structure and design
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Development guidelines
+- [MCP_GUIDE.md](MCP_GUIDE.md) - Contributor guide for LegalContext-first MCP tools
 
