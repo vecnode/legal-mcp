@@ -2,7 +2,7 @@
 
 ## Overview
 
-`legal-mcp` is a professional Python Model Context Protocol (MCP) server designed for legal document analysis. The project follows a layered architecture that separates concerns and makes the codebase maintainable, testable, and extensible.
+`legal-mcp` is a professional Python Model Context Protocol (MCP) server designed for legal understanding. The project follows a layered architecture that separates concerns and makes the codebase maintainable, testable, and extensible.
 
 ## Package Structure
 
@@ -11,12 +11,16 @@ legal_mcp/
 ├── __init__.py                 # Package initialization and version
 ├── domain/                     # Business logic layer
 │   ├── __init__.py
+│   ├── context.py              # Shared LegalContext model
+│   ├── legal_research.py       # Legal research request/response models
 │   └── pdf.py                  # PDF document handling
 ├── backends/                   # External service integrations
 │   ├── __init__.py
+│   ├── legal_research.py       # Research backend facade
 │   └── ollama.py               # Ollama LLM backend
-├── tools/                      # MCP tools (future: tool implementations)
-│   └── __init__.py
+├── tools/                      # MCP tool implementations
+│   ├── __init__.py
+│   └── legal_research.py       # LegalContext-first tool handler example
 ├── server/                     # FastAPI server and routing
 │   ├── __init__.py            # Route registration
 │   ├── __main__.py            # Module entry point
@@ -27,7 +31,7 @@ legal_mcp/
 ├── pyproject.toml              # Project metadata and dependencies
 ├── Makefile                    # Local development commands
 ├── ARCHITECTURE.md             # This file
-└── CONTRIBUTING.md             # Development guidelines
+└── MCP_GUIDE.md                # MCP contributor architecture guide
 ```
 
 ## Layered Architecture
@@ -35,6 +39,8 @@ legal_mcp/
 ### 1. Domain Layer (`legal_mcp/domain/`)
 
 Pure business logic independent of external frameworks:
+- **`context.py`**: shared LegalContext parsing (`country`, `domain`)
+- **`legal_research.py`**: typed request/response models for research tools
 - **`pdf.py`**: PDF extraction and processing
 - No external dependencies (except stdlib and pypdf)
 - Easy to test and reuse
@@ -42,6 +48,7 @@ Pure business logic independent of external frameworks:
 ### 2. Backends Layer (`legal_mcp/backends/`)
 
 Integrations with external services:
+- **`legal_research.py`**: backend selection and data-source facade for research
 - **`ollama.py`**: LLM operations via Ollama API
 - Handles API communication, error handling, configuration
 - Substitutable with different LLM providers
@@ -51,6 +58,7 @@ Integrations with external services:
 MCP tool implementations following the handler convention:
 - Each tool: `legal_mcp/tools/<tool_name>.py`
 - Each tool exposes: `async def handle_<tool_name>(args: dict) -> dict`
+- Parse legal context first via `LegalContext.from_args(args)`
 - Tools orchestrate backends and domain logic
 
 ### 4. Server Layer (`legal_mcp/server/`)

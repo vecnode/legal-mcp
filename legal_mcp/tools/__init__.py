@@ -6,4 +6,6 @@ Each tool module should follow the convention:
 - Exposes an async handler: handle_<tool_name>(args: dict) -> dict
 """
 
-__all__ = []
+from .legal_research import handle_legal_research
+
+__all__ = ["handle_legal_research"]
