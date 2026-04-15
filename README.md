@@ -1,6 +1,6 @@
 # legal-mcp
 
-A professional Python MCP server for legal document analysis.
+A professional Python MCP server for legal understanding.
 
 ## Quick Start
 

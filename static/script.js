@@ -372,6 +372,84 @@ function wireLegalGenerator() {
   });
 }
 
+function wireAboutChat() {
+  const messagesEl = document.getElementById('aboutChatMessages');
+  const inputEl = document.getElementById('aboutChatInput');
+  const sendBtn = document.getElementById('aboutChatSendBtn');
+  const statusEl = document.getElementById('aboutChatStatus');
+  const hintEl = document.getElementById('aboutChatConfigHint');
+
+  if (!messagesEl || !inputEl || !sendBtn || !statusEl || !hintEl) {
+    return;
+  }
+
+  const conversation = [];
+
+  function syncHint() {
+    const cfg = api.getOllamaConfig();
+    const modelPart = cfg.model || '(no model selected)';
+    hintEl.textContent = `Using ${cfg.baseUrl} · ${modelPart}`;
+  }
+
+  function appendMessage(role, content) {
+    const line = document.createElement('div');
+    line.className = `about-chat-line ${role}`;
+    line.textContent = `${role === 'user' ? 'You' : role === 'assistant' ? 'Ollama' : 'System'}: ${content}`;
+    messagesEl.appendChild(line);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  syncHint();
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    const cfg = api.getOllamaConfig();
+    if (!cfg.model) {
+      alert('Choose an Ollama model in Settings before using chat.');
+      return;
+    }
+
+    conversation.push({ role: 'user', content: text });
+    appendMessage('user', text);
+    inputEl.value = '';
+    sendBtn.disabled = true;
+    inputEl.disabled = true;
+    UIHelpers.setStatus(statusEl, 'Waiting for Ollama...');
+
+    try {
+      const data = await api.chatWithOllama(conversation);
+      const reply = (data.message || '').trim();
+      conversation.push({ role: 'assistant', content: reply });
+      appendMessage('assistant', reply || '(empty reply)');
+      UIHelpers.setStatus(statusEl, 'Response ready');
+    } catch (err) {
+      UIHelpers.setStatus(statusEl, '');
+      appendMessage('system', `Error: ${err.message}`);
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.disabled = false;
+      inputEl.focus();
+      syncHint();
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === LS_OLLAMA_IP || e.key === LS_OLLAMA_PORT || e.key === LS_OLLAMA_MODEL) {
+      syncHint();
+    }
+  });
+}
+
 document.addEventListener('dragover', (e) => {
   if (!e.target.closest('.drop-area')) {
     e.preventDefault();
@@ -389,6 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireLegalGenerator();
   wireOllamaSettings();
   wireAccordions();
+  wireAboutChat();
   UIHelpers.disableButtons(
     document.getElementById('runBtn'),
     document.getElementById('copyBtn'),

@@ -1,22 +1,22 @@
-:root { 
-  --bg:#f5f7fa; 
-  --panel:#ffffff; 
-  --text:#1a2332; 
-  --muted:#6b7280; 
-  --accent:#3b82f6; 
-  --accent-soft: rgba(59, 130, 246, 0.1);
-  --accent-border: rgba(59, 130, 246, 0.3);
+:root {
+  --bg: #f6f6ef;
+  --panel: #ffffff;
+  --text: #101010;
+  --muted: #4a4a4a;
+  --accent: #ff9d4d;
+  --accent-soft: #fff8b8;
+  --accent-border: #101010;
 }
 
 * { 
   box-sizing: border-box; 
 }
 
-body { 
-  margin: 0; 
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; 
-  background: var(--bg); 
-  color: var(--text); 
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  background: var(--bg);
+  color: var(--text);
 }
 
 header { 
@@ -589,4 +589,172 @@ select:focus {
 
 .search-result-item .result-url:hover {
   text-decoration: underline;
+}
+
+/* Light brutalist overrides */
+header,
+.main-container,
+.card,
+.accordion-item,
+.accordion-trigger,
+.accordion-panel,
+.drop-area,
+.pdf-preview,
+.results,
+.input-text,
+.settings-input,
+select,
+.file-info,
+.btn,
+.tab-btn {
+  box-shadow: none;
+}
+
+.main-container,
+.card,
+.accordion-item {
+  border-radius: 10px;
+}
+
+.accordion-trigger,
+.accordion-panel,
+.drop-area,
+.pdf-preview,
+.results,
+.input-text,
+.settings-input,
+select,
+.file-info,
+.btn,
+.about-chat-input,
+.about-chat-messages,
+.about-chat-line {
+  border-radius: 8px;
+}
+
+.tab-btn {
+  border-radius: 6px 6px 0 0;
+}
+
+header {
+  border-bottom: 2px solid #101010;
+  background: #ffffff;
+}
+
+.main-container,
+.card,
+.accordion-item,
+.drop-area,
+.pdf-preview,
+.results,
+.input-text,
+.settings-input,
+select,
+.file-info {
+  border: 2px solid #101010;
+}
+
+.tab-bar {
+  background: #ffffff;
+  border-bottom: 2px solid #101010;
+}
+
+.tab-btn {
+  color: #101010;
+  border-right: 2px solid #101010;
+  border-bottom: 0;
+}
+
+.tab-btn:last-child {
+  border-right: 0;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: #101010;
+}
+
+.btn {
+  background: var(--accent);
+  color: #101010;
+  border: 2px solid #101010;
+}
+
+.btn:hover,
+.accordion-trigger:hover,
+.drop-area:hover {
+  filter: brightness(0.97);
+}
+
+.about-chat-card {
+  display: grid;
+  gap: 10px;
+}
+
+.about-chat-hint {
+  margin: 0;
+}
+
+.about-chat-messages {
+  height: 400px;
+  overflow-y: auto;
+  border: 2px solid #101010;
+  background: #fffef7;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.about-chat-line {
+  display: inline-block;
+  width: fit-content;
+  max-width: 92%;
+  border: 2px solid #101010;
+  padding: 8px;
+  background: #ffffff;
+  line-height: 1.4;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.about-chat-line.user {
+  background: var(--accent);
+}
+
+.about-chat-line.assistant {
+  background: #ffffff;
+}
+
+.about-chat-line.system {
+  background: #efefef;
+}
+
+.about-chat-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.about-chat-input {
+  width: 100%;
+  border: 2px solid #101010;
+  background: #ffffff;
+  color: #101010;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.about-chat-input:focus {
+  outline: none;
+  background: #fffef7;
+}
+
+@media (max-width: 900px) {
+  .about-chat-row {
+    grid-template-columns: 1fr;
+  }
 }

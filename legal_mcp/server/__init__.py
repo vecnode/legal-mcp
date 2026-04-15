@@ -3,10 +3,11 @@
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import File, Form, UploadFile
+from fastapi import Body, File, Form, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from legal_mcp.backends.ollama import (
+    chat_with_ollama,
     get_ollama_base,
     get_ollama_model,
     normalize_ollama_base,
@@ -139,6 +140,23 @@ def register_routes(server) -> None:
             "processed_text": processed_text,
             "language": language,
         }
+
+    @server.post("/api/ollama/chat")
+    async def ollama_chat(payload: dict = Body(...)):
+        """Chat with Ollama using role/content message history."""
+        messages = payload.get("messages") if isinstance(payload, dict) else None
+        ollama_base = payload.get("ollama_base") if isinstance(payload, dict) else None
+        ollama_model = payload.get("ollama_model") if isinstance(payload, dict) else None
+
+        reply = chat_with_ollama(
+            messages=messages if isinstance(messages, list) else [],
+            base=ollama_base,
+            model=ollama_model,
+        )
+        if reply.startswith("Error:"):
+            return JSONResponse({"error": reply}, status_code=502)
+
+        return {"message": reply}
 
 
 # Register routes on the app instance

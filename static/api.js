@@ -74,6 +74,29 @@ class LegalMcpAPI {
     return await response.json();
   }
 
+  // Generic chat with Ollama using role/content messages.
+  async chatWithOllama(messages) {
+    const { baseUrl, model } = this.getOllamaConfig();
+    const response = await fetch('/api/ollama/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages,
+        ollama_base: baseUrl,
+        ollama_model: model,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `Server error (${response.status})`);
+    }
+
+    return await response.json();
+  }
+
   // Health check
   async checkHealth() {
     const response = await fetch('/api/health');

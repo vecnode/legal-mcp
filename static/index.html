@@ -26,13 +26,16 @@
           <h2 class="about-heading">About</h2>
           <p>Legal-MCP is a framework for interacting with legal documents</p>
         </section>
-        <section class="card">
-          <h3 class="about-subheading">What you can do</h3>
-          <ul class="about-list">
-            <li><strong>PDF-to-Text Extractor</strong> - upload a PDF and copy or download the extracted text.</li>
-            <li><strong>Text Summariser</strong> - paste text and get a concise summary (English).</li>
-          </ul>
-          <p class="about-hint">Switch to the <strong>Tools</strong> tab.</p>
+
+        <section class="card about-chat-card">
+          <h3 class="about-subheading">Main Chat (Ollama)</h3>
+          <p class="muted about-chat-hint" id="aboutChatConfigHint" aria-live="polite"></p>
+          <div id="aboutChatMessages" class="about-chat-messages" aria-live="polite"></div>
+          <div class="about-chat-row">
+            <input id="aboutChatInput" class="about-chat-input" type="text" placeholder="Ask Ollama anything about your legal workflow" autocomplete="off" />
+            <button class="btn" id="aboutChatSendBtn" type="button">Send</button>
+          </div>
+          <div class="muted process-status" id="aboutChatStatus"></div>
         </section>
       </div>
 
